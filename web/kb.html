@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>mini-14 · 资料库</title>
+<link rel="icon" href="fishmaid.png?v=3" />
+<style>
+  :root{
+    --red:#e0393e; --red-dark:#a8232a; --red-soft:#ffd9d6;
+    --cream:#fffaf6; --card:#ffffff; --ink:#3b2c2c; --muted:#95827f;
+    --line:#f2e3de; --shadow:0 10px 30px rgba(150,60,50,.10);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--ink); background:
+      radial-gradient(1200px 600px at 50% -10%, #ffece6 0%, rgba(255,236,230,0) 60%), var(--cream);
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 18px 40px}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 2px 14px}
+  header img{width:46px;height:46px;border-radius:50%;border:2px solid #fff;box-shadow:var(--shadow);object-fit:cover}
+  .title{font-size:20px;font-weight:800}
+  .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .grow{flex:1}
+  .back{font-size:12.5px;color:#8a6f6b;text-decoration:none;border:1px solid var(--line);background:#fff;
+    padding:8px 13px;border-radius:11px}
+  .back:hover{color:var(--red);border-color:var(--red-soft)}
+
+  .bar{display:flex;gap:10px;align-items:center;margin:6px 0 12px}
+  .import{border:0;background:linear-gradient(180deg,#ef4a4f,#dc3238);color:#fff;font-weight:700;font-size:13px;
+    padding:11px 16px;border-radius:13px;cursor:pointer;box-shadow:0 6px 16px rgba(220,50,56,.22);white-space:nowrap}
+  .import:disabled{opacity:.55;box-shadow:none;cursor:wait}
+  .search{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);
+    border-radius:14px;padding:10px 14px;box-shadow:var(--shadow)}
+  .search input{border:0;outline:0;flex:1;font:inherit;font-size:14.5px;background:transparent;color:var(--ink)}
+  .search span{color:#c2aeaa;font-size:15px}
+
+  .topics{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 14px}
+  .tag{border:1px solid var(--line);background:#fff;color:#6d5856;border-radius:999px;padding:7px 12px;
+    font-size:12.5px;cursor:pointer;user-select:none}
+  .tag:hover{border-color:var(--red-soft);color:var(--red)}
+  .tag.on{background:#fff2ef;border-color:#ffc9c2;color:var(--red);font-weight:700}
+  .tag em{font-style:normal;color:#bcaaa6;margin-left:5px;font-size:11px}
+
+  .meta{font-size:12px;color:var(--muted);margin:0 2px 10px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;
+    box-shadow:0 3px 10px rgba(150,80,70,.04)}
+  .card h3{margin:0 0 6px;font-size:14.5px;line-height:1.5}
+  .card h3 a{color:var(--ink);text-decoration:none}
+  .card h3 a:hover{color:var(--red)}
+  .card .sub2{font-size:11.5px;color:#b09d99;margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip2{background:#fff2ef;color:var(--red-dark);border-radius:6px;padding:2px 7px;font-size:11px}
+  .card p{margin:0;font-size:13.5px;line-height:1.8;color:#5b4a48;white-space:pre-wrap;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+  .card.open p{-webkit-line-clamp:unset;display:block}
+  .card .more{font-size:11.5px;color:#bcaaa6;margin-top:7px;cursor:pointer}
+  .load{display:block;margin:16px auto 0;border:1px solid var(--line);background:#fff;color:#8a6f6b;
+    border-radius:12px;padding:10px 22px;font-size:13px;cursor:pointer}
+  .load:hover{color:var(--red);border-color:var(--red-soft)}
+  .empty{text-align:center;color:#b09d99;font-size:13.5px;padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="fishmaid.png?v=3" alt="" />
+    <div>
+      <div class="title">mini-14 资料库</div>
+      <div class="sub" id="stats">正在加载…</div>
+    </div>
+    <div class="grow"></div>
+    
+    <a class="back" href="/">← 回到聊天</a>
+  </header>
+
+  <div class="bar">
+    <div class="search"><span>🔍</span><input id="q" placeholder="搜标题、正文、来源…（支持中文关键词）" autocomplete="off" /></div>
+    <button class="import" id="importBtn">＋ 导入资料</button>
+    <button class="import" id="inboxBtn">📥 收件箱</button>
+    <input type="file" id="fileInput" multiple accept=".txt,.md,.markdown,.html,.htm,.csv" style="display:none" />
+  </div>
+  </div>
+
+  <div class="topics" id="topics"></div>
+  <div class="meta" id="meta"></div>
+  <div id="list"></div>
+  <button class="load" id="load" style="display:none">加载更多</button>
+</div>
+
+<script>
+const TOPIC = { esports:'电竞', anime:'动漫', 'adult-games':'成人游戏', 'steam-games':'Steam', 'film-tv':'影视',
+  food:'美食', 'delta-force':'三角洲', 'politics-cn':'中国政治', 'history-cn':'中国近现代史',
+  'world-politics':'世界政治', 'political-theory':'政治理论', taiwan:'岛内政治', custom:'自定义', literature:'文学', 'game-wiki':'游戏百科', 'game-news':'游戏资讯', web:'网页存档', general:'综合', quotes:'语录', chat:'日常对话' };
+
+const PAGE = 40;
+let items = [], counts = {}, topic = 'all', filtered = [], shown = 0;
+const $ = (s) => document.querySelector(s);
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function tokenize(q){
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  const out = [];
+  const ascii = q.match(/[a-z0-9]+/g);
+  if (ascii) out.push(...ascii);
+  const han = q.replace(/[^\u4e00-\u9fa5]/g, '');
+  for (let i = 0; i < han.length - 1; i++) out.push(han.slice(i, i + 2));
+  if (han.length === 1) out.push(han);
+  return [...new Set(out)];
+}
+function score(item, toks){
+  if (!toks.length) return 1;
+  const title = item.title.toLowerCase(), text = item.text.toLowerCase(), src = (item.source || '').toLowerCase();
+  let s = 0;
+  for (const t of toks){
+    if (title.includes(t)) s += 8;
+    if (src.includes(t)) s += 2;
+    let idx = 0, n = 0;
+    while ((idx = text.indexOf(t, idx)) !== -1 && n < 6){ n++; idx += t.length; }
+    s += n;
+  }
+  return s;
+}
+function apply(){
+  const toks = tokenize($('#q').value);
+  filtered = items
+    .filter(x => topic === 'all' || x.topic === topic)
+    .map(x => ({ x, s: score(x, toks) }))
+    .filter(o => o.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .map(o => o.x);
+  shown = 0;
+  $('#list').innerHTML = '';
+  $('#meta').textContent = toks.length
+    ? `“${$('#q').value.trim()}” 命中 ${filtered.length} 条`
+    : `共 ${filtered.length} 条资料`;
+  render();
+}
+function render(){
+  const slice = filtered.slice(shown, shown + PAGE);
+  for (const it of slice){
+    const el = document.createElement('div');
+    el.className = 'card';
+    const date = it.published && it.published !== 'unknown' ? it.published : '';
+    el.innerHTML = `
+      <h3><a href="${esc(it.url || '#')}" target="_blank" rel="noreferrer">${esc(it.title)}</a></h3>
+      <div class="sub2">
+        <span class="chip2">${TOPIC[it.topic] || it.topic}</span>
+        <span>${esc(it.source || '')}</span>${date ? '<span>· ' + esc(date) + '</span>' : ''}
+        <span>· ${it.text.length} 字</span>
+      </div>
+      <p>${esc(it.text)}</p>
+      <div class="more">展开全文</div>`;
+    el.querySelector('p').onclick = () => toggle(el);
+    el.querySelector('.more').onclick = () => toggle(el);
+    $('#list').appendChild(el);
+  }
+  shown += slice.length;
+  $('#load').style.display = shown < filtered.length ? 'block' : 'none';
+  $('#load').textContent = `加载更多（还有 ${filtered.length - shown} 条）`;
+}
+function toggle(el){
+  el.classList.toggle('open');
+  el.querySelector('.more').textContent = el.classList.contains('open') ? '收起' : '展开全文';
+}
+
+function buildTopics(){
+  const box = $('#topics');
+  const all = document.createElement('div');
+  all.className = 'tag on'; all.dataset.k = 'all';
+  all.innerHTML = `全部 <em>${items.length}</em>`;
+  box.appendChild(all);
+  Object.keys(counts).sort((a,b) => counts[b] - counts[a]).forEach(k => {
+    const d = document.createElement('div');
+    d.className = 'tag'; d.dataset.k = k;
+    d.innerHTML = `${TOPIC[k] || k} <em>${counts[k]}</em>`;
+    box.appendChild(d);
+  });
+  box.onclick = (e) => {
+    const t = e.target.closest('.tag');
+    if (!t) return;
+    topic = t.dataset.k;
+    [...box.children].forEach(c => c.classList.toggle('on', c === t));
+    apply();
+  };
+}
+
+(async function(){
+  await loadData();
+  const preset = new URLSearchParams(location.search).get('q');
+  if (preset) { $('#q').value = preset; }
+  apply();
+  let timer = null;
+  $('#q').oninput = () => { clearTimeout(timer); timer = setTimeout(apply, 160); };
+  $('#load').onclick = render;
+})();
+
+async function loadData(){
+  const r = await fetch('kb/chunks.json?t=' + Date.now(), {cache: 'no-store'});
+  const j = await r.json();
+  items = j.items || [];
+  counts = {};
+  for (const it of items) counts[it.topic] = (counts[it.topic] || 0) + 1;
+  $('#stats').textContent = `${j.count} 条 · ${(j.chars / 10000).toFixed(1)} 万字 · ${Object.keys(counts).length} 个主题 · 入库 ${j.built}`;
+  const box = $('#topics');
+  box.innerHTML = '';
+  buildTopics();
+}
+
+// ---------- import ----------
+const IMPORT_URL = 'http://127.0.0.1:18018/add';
+const btn = $('#importBtn'), fileInput = $('#fileInput');
+
+btn.onclick = () => fileInput.click();
+
+$('#inboxBtn').onclick = async () => {
+  const b = $('#inboxBtn');
+  b.disabled = true; b.textContent = '导入中…';
+  try {
+    const r = await fetch('http://127.0.0.1:18018/scan-inbox', { method: 'POST' });
+    const j = await r.json();
+    if (j.ok) {
+      await loadData(); apply();
+      toast(`收件箱：${j.files} 个文件，新增 ${j.added} 段` + (j.errors && j.errors.length ? `（${j.errors.length} 个跳过）` : ''));
+    } else toast('导入失败：' + (j.error || '未知错误'));
+  } catch (e) { toast('连不上导入服务'); }
+  b.disabled = false; b.textContent = '📥 收件箱';
+};
+
+async function readText(file){
+  const buf = await file.arrayBuffer();
+  let text = new TextDecoder('utf-8').decode(buf);
+  if (text.includes('\uFFFD')) {
+    try { text = new TextDecoder('gbk').decode(buf); } catch (e) {}
+  }
+  return text;
+}
+
+fileInput.onchange = async () => {
+  const files = [...fileInput.files];
+  fileInput.value = '';
+  if (!files.length) return;
+  btn.disabled = true;
+  let ok = 0, added = 0, failed = 0;
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    btn.textContent = `导入中 ${i + 1}/${files.length}…`;
+    try {
+      const text = await readText(f);
+      const res = await fetch(IMPORT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: f.name, text })
+      });
+      const j = await res.json();
+      if (j.ok) { ok++; added += j.added; }
+      else { failed++; console.warn(j.error); }
+    } catch (e) { failed++; console.warn(e); }
+  }
+  btn.disabled = false;
+  btn.textContent = '＋ 导入资料';
+  await loadData();
+  apply();
+  toast(failed ? `导入 ${ok} 个文件，失败 ${failed} 个` : `已导入 ${ok} 个文件，新增 ${added} 段`);
+};
+
+function toast(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:rgba(60,40,40,.92);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:99;opacity:0;transition:.2s;box-shadow:0 8px 24px rgba(0,0,0,.15)';
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.style.opacity = 1);
+  setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 250); }, 2200);
+}
+</script>
+</body>
+</html>
