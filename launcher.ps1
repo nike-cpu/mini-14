@@ -150,6 +150,14 @@ if ($ok) {
     exit 0
 }
 
+# database missing -> ask the user whether to download it
+$chunksFile = Join-Path $web 'kb\chunks.json'
+if (-not (Test-Path $chunksFile)) {
+    $dl = Join-Path $root '数据库下载.cmd'
+    if (Test-Path $dl) {
+        Start-Process -FilePath $dl -Wait -ErrorAction SilentlyContinue
+    }
+}
 # failure: show the Chinese hint file and the tail of the logs
 $msg = Join-Path $logDir 'startup-error.txt'
 $logTail = @()
