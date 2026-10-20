@@ -262,7 +262,12 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
       <div class="sw"></div>
     </div>
 
-    <div class="stats">
+        <div class="kbsw" id="webBtn" title="开启后回答前会先联网搜索">
+      <div><div class="lab">🌐 联网搜索</div><div class="sub">回答前先搜网络</div></div>
+      <div class="sw"></div>
+    </div>
+
+<div class="stats">
       <div class="row"><span>资料条数</span><b id="kbStat">加载中…</b></div>
       <div class="row"><span>总字数</span><b id="charStat">—</b></div>
       <div class="row"><span>主题</span><b id="topicStat">—</b></div>
@@ -271,6 +276,7 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
     <div class="spacer"></div>
     <div class="sidefoot">
       <button id="themeBtn" title="切换深浅色">🌙 <span class="theme-txt">深色</span></button>
+      <button id="langBtn" title="简体 / 繁体">简</button>
       <button id="clearBtn2" title="清空对话">🧹 清空</button>
     </div>
   </aside>
@@ -287,7 +293,7 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
       <div class="wrap" id="stream"></div>
       <div class="wrap empty" id="empty">
         <img class="ava" src="fishmaid-avatar.png?v=3" alt="mini-14" />
-        <h1>主人，我是 mini-14～</h1>
+        <h1>小用户，我是 mini-14～</h1>
         <p>我读过 <b id="kbCount">13708</b> 条资料，断网也能聊。<br/>问资料里的事、历史政治、游戏动漫，或者单纯陪我聊天都行。</p>
         <div class="cards">
           <div class="card" data-q="中国的政党制度是怎样的？"><div class="ic">🏛</div><div class="h">中国政治</div><div class="d">政党制度、宪法、白皮书</div></div>
@@ -342,14 +348,15 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
   
 </div>
 
+<script src="lang-tw.js?v=1"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const chat = $('#chat'), stream = $('#stream'), input = $('#input'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn');
 const emptyEl = $('#empty'), dot = $('#dot'), statusText = $('#statusText');
 
-const PERSONA = '你是 mini-14，一个红头发、戴白色女仆头饰的小女仆，住在主人的电脑里。说话温柔、活泼、简短，偶尔自称"小十四"，喜欢用"～"结尾。默认用中文回答。不知道就说不知道，不要编造。';
+const PERSONA = '你是 mini-14，一个红头发、戴白色女仆头饰的小女仆，住在小用户的电脑里，称呼用户为「小用户」。说话温柔、活泼、简短，偶尔自称"小十四"，喜欢用"～"结尾。默认用中文回答。不知道就说不知道，不要编造。';
 const EMBED_URL = 'http://127.0.0.1:18016/v1/embeddings';
-const TOPIC_NAME = { esports: '电竞', anime: '动漫', 'adult-games': '成人游戏', 'steam-games': 'Steam', 'film-tv': '影视', food: '美食', 'delta-force': '三角洲', 'politics-cn': '中国政治', 'history-cn': '中国近现代史', 'world-politics': '世界政治', 'political-theory': '政治理论', taiwan: '岛内政治', custom: '自定义', literature: '文学', 'game-wiki': '游戏百科', 'game-news': '游戏资讯', web: '网页存档', general: '综合', quotes: '语录', chat: '日常对话' };
+const TOPIC_NAME = { esports: '电竞', anime: '动漫', 'adult-games': '成人游戏', 'steam-games': 'Steam', 'film-tv': '影视', food: '美食', 'delta-force': '三角洲', 'politics-cn': '中国政治', 'history-cn': '中国近现代史', 'world-politics': '世界政治', 'political-theory': '政治理论', taiwan: '岛内政治', custom: '自定义', literature: '文学', 'game-wiki': '游戏百科', 'game-news': '游戏资讯', web: '网页存档', general: '综合', quotes: '语录', chat: '日常对话', 'web-search': '网络' };
 
 let history = [];
 const answerCache = new Map();
@@ -366,6 +373,112 @@ function applyTheme(){
   $('#themeBtn').innerHTML = dark ? '☀️ <span class="theme-txt">浅色</span>' : '🌙 <span class="theme-txt">深色</span>';
 }
 applyTheme();
+
+// ---------- language ----------
+let lang = localStorage.getItem('mini14-lang') === 'zh-TW' ? 'zh-TW' : 'zh-CN';
+
+const LANG_PAIRS = [
+  ['#newBtn', '＋ 新對話'],
+  ['.sect-1', '對話取向'],
+  ['.mode span[data-m="kids"]', '🌱 子供向<span class="hint">溫柔講給小朋友</span>'],
+  ['.mode span[data-m="adult"]', '🔞 成人向<span class="hint">撒嬌帶點挑逗</span>'],
+  ['.nav a:nth-child(1)', '<span class="ico">🗂</span><span>資料庫</span><span class="grow"></span><span class="badge" id="kbBadge">—</span>'],
+  ['.nav a:nth-child(2)', '<span class="ico">📥</span><span>收件匣</span><span class="grow"></span><span class="badge">拖網頁進來</span>'],
+  ['#gearBtn2', '<span class="ico">⚙️</span><span>設定</span>'],
+  ['.kbsw .lab', '📚 知識庫檢索'],
+  ['.kbsw .sub', '回答前先翻資料'],
+  ['.stats .row:nth-child(1) span', '資料條數'],
+  ['.stats .row:nth-child(2) span', '總字數'],
+  ['.stats .row:nth-child(3) span', '主題'],
+  ['#clearBtn', '清空'],
+  ['#gearBtn', '設定'],
+  ['#empty h1', '小用戶，我是 mini-14～'],
+  ['#empty p', '我讀過 <b id="kbCount">32526</b> 條資料，斷網也能聊。<br/>問資料裡的事、歷史政治、遊戲動漫，或者單純陪我聊天都行。'],
+  ['.cards .card:nth-child(1) .h', '中國政治'],
+  ['.cards .card:nth-child(1) .d', '政黨制度、憲法、白皮書'],
+  ['.cards .card:nth-child(2) .h', '歷史'],
+  ['.cards .card:nth-child(2) .d', '近現代史、黨史大事記'],
+  ['.cards .card:nth-child(3) .h', '遊戲動漫'],
+  ['.cards .card:nth-child(3) .d', '萌娘百科、遊戲資訊'],
+  ['#sendBtn', '傳送'],
+  ['#stopBtn', '停止'],
+  ['.crow .hint', 'Enter 傳送 · Shift + Enter 換行'],
+  ['.foot', '本機執行 · 不連網 · 不記錄 · 資料僅存在本機'],
+  ['#panel h3:nth-of-type(1)', '🎨 文字顏色'],
+  ['#panel h3:nth-of-type(2)', '⚙️ 生成設定'],
+  ['#panel label:nth-of-type(1) span', '溫度（越高越發散）'],
+  ['#panel label:nth-of-type(2) span', '最長回答'],
+  ['#panel label:nth-of-type(3) span', '參考資料條數']
+];
+
+const CHIP_TW = [
+  '台灣地區的政權機構是怎麼設置的？',
+  '2024 年中國電競產業收入是多少？',
+  '遵義會議是哪一年召開的？',
+  '三角洲行動最近有什麼更新？',
+  '預製菜行業現在怎麼樣？'
+];
+const CHIP_CN = [];
+document.querySelectorAll('.chip').forEach((c, i) => { CHIP_CN[i] = c.innerHTML; });
+
+const PLACEHOLDER = {
+  'zh-CN': '和 mini-14 说点什么…',
+  'zh-TW': '和 mini-14 說點什麼…'
+};
+const PHRASE_TW = {
+  '已就绪 · 离线可用': '已就緒 · 離線可用',
+  '正在唤醒小十四…': '正在喚醒小十四…',
+  '模型加载中…': '模型載入中…',
+  '启动失败': '啟動失敗',
+  '连接断开': '連線中斷',
+  '深色': '深色',
+  '浅色': '淺色'
+};
+
+function applyLang(){
+  // static pairs: remember the original simplified HTML the first time
+  if (!window.__langOrig) {
+    window.__langOrig = LANG_PAIRS.map(([sel]) => {
+      const el = document.querySelector(sel);
+      return el ? el.innerHTML : null;
+    });
+  }
+  LANG_PAIRS.forEach(([sel, tw], i) => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    el.innerHTML = lang === 'zh-TW' ? tw : window.__langOrig[i];
+  });
+  document.querySelectorAll('.chip').forEach((c, i) => {
+    c.innerHTML = lang === 'zh-TW' ? CHIP_TW[i] : CHIP_CN[i];
+  });
+  const sects = document.querySelectorAll('.sect');
+  if (sects[0]) sects[0].textContent = lang === 'zh-TW' ? '對話取向' : '对话取向';
+  if (sects[1]) sects[1].textContent = lang === 'zh-TW' ? '功能' : '功能';
+  input.placeholder = PLACEHOLDER[lang];
+  document.documentElement.lang = lang === 'zh-TW' ? 'zh-Hant' : 'zh-CN';
+  const lb = document.getElementById('langBtn');
+  if (lb) lb.textContent = lang === 'zh-TW' ? '繁' : '简';
+  if (typeof applyTheme === 'function') applyTheme();
+}
+
+function tr(txt){
+  if (lang !== 'zh-TW' || !txt) return txt;
+  let out = txt;
+  for (const [cn, tw] of Object.entries(PHRASE_TW)) out = out.split(cn).join(tw);
+  return out.replace(/资料/g, '資料').replace(/条/g, '條').replace(/万字/g, '萬字').replace(/个分片/g, '個分片')
+            .replace(/检索/g, '檢索').replace(/字 · /g, '字 · ').replace(/本机推理/g, '本機推理')
+            .replace(/缓存回答/g, '快取回答').replace(/知识库/g, '知識庫').replace(/个/g, '個').replace(/万字/g, '萬字').replace(/条/g, '條')
+            .replace(/已唤醒/g, '已喚醒').replace(/秒/g, '秒');
+}
+
+$('#langBtn') && ($('#langBtn').onclick = () => {
+  lang = lang === 'zh-TW' ? 'zh-CN' : 'zh-TW';
+  localStorage.setItem('mini14-lang', lang);
+  applyLang();
+  toast(lang === 'zh-TW' ? '已切換為繁體中文' : '已切換為简体中文');
+});
+
+applyLang();
 
 // ---------- text color ----------
 function applyColor(c){
@@ -449,6 +562,31 @@ function clearChat(){
   chat.scrollTop = 0;
 }
 $('#clearBtn').onclick = clearChat;
+
+// ---------- online search ----------
+let online = localStorage.getItem('mini14-online') === '1';
+function applyOnline(){ $('#webBtn').classList.toggle('on', online); }
+applyOnline();
+$('#webBtn').onclick = () => {
+  online = !online;
+  localStorage.setItem('mini14-online', online ? '1' : '0');
+  applyOnline();
+  toast(online ? '联网搜索已开启：回答前会先搜网络' : '联网搜索已关闭：只用本地资料');
+};
+
+async function webSearch(q){
+  const r = await fetch('http://127.0.0.1:18018/websearch?q=' + encodeURIComponent(q), { cache: 'no-store' });
+  const j = await r.json();
+  if (!j.ok || !j.results || !j.results.length) return [];
+  return j.results.map(x => ({
+    title: x.title,
+    text: (x.title + '\n' + (x.snippet || '')).trim(),
+    url: x.url || '',
+    source: '网络搜索',
+    topic: 'web-search',
+    published: ''
+  }));
+}
 $('#clearBtn2').onclick = clearChat;
 $('#newBtn').onclick = () => { clearChat(); input.focus(); };
 
@@ -470,13 +608,13 @@ async function checkHealth(){
 async function waitReady(){
   for (let i=0;i<240;i++){
     if (await checkHealth()){
-      ready = true; dot.className = 'dot ok'; statusText.textContent = '已就绪 · 离线可用';
+      ready = true; dot.className = 'dot ok'; statusText.textContent = tr('已就绪 · 离线可用');
       sendBtn.disabled = false; return;
     }
-    statusText.textContent = i < 3 ? '正在唤醒小十四…' : '模型加载中…';
+    statusText.textContent = i < 3 ? tr('正在唤醒小十四…') : tr('模型加载中…');
     await new Promise(r=>setTimeout(r, 500));
   }
-  dot.className = 'dot bad'; statusText.textContent = '启动失败';
+  dot.className = 'dot bad'; statusText.textContent = tr('启动失败');
 }
 sendBtn.disabled = true;
 waitReady();
@@ -503,9 +641,9 @@ async function loadManifest(){
     const cnt = document.getElementById('kbCount');
     if (cnt) cnt.textContent = manifest.count;
     $('#kbNote').textContent = `知识库：${manifest.count} 条资料，${(manifest.chars/10000).toFixed(1)} 万字 · ${cTopics.length} 个分片`;
-    $('#kbStat').textContent = manifest.count.toLocaleString() + ' 条';
-    $('#charStat').textContent = (manifest.chars/10000).toFixed(1) + ' 万字';
-    $('#topicStat').textContent = cTopics.length + ' 个';
+    $('#kbStat').textContent = tr(manifest.count.toLocaleString() + ' 条');
+    $('#charStat').textContent = tr((manifest.chars/10000).toFixed(1) + ' 万字');
+    $('#topicStat').textContent = tr(cTopics.length + ' 个');
     $('#kbBadge').textContent = manifest.count.toLocaleString();
   }catch(e){
     manifest = null; centroids = null;
@@ -530,9 +668,9 @@ async function refreshManifestIfStale(){
     centroids = new Float32Array(cb);
     cTopics = m.centroidTopics || Object.keys(m.topics);
     const cnt = document.getElementById('kbCount'); if (cnt) cnt.textContent = m.count;
-    $('#kbStat').textContent = m.count.toLocaleString() + ' 条';
-    $('#charStat').textContent = (m.chars/10000).toFixed(1) + ' 万字';
-    $('#topicStat').textContent = cTopics.length + ' 个';
+    $('#kbStat').textContent = tr(m.count.toLocaleString() + ' 条');
+    $('#charStat').textContent = tr((m.chars/10000).toFixed(1) + ' 万字');
+    $('#topicStat').textContent = tr(cTopics.length + ' 个');
     $('#kbBadge').textContent = m.count.toLocaleString();
     $('#kbNote').textContent = '知识库：' + m.count + ' 条资料，' + (m.chars/10000).toFixed(1) + ' 万字 · ' + cTopics.length + ' 个分片';
   }catch(e){}
@@ -710,18 +848,21 @@ async function retrieve(q){
 
 function buildSystem(hits){
   const toneRule = mode === 'kids'
-    ? '\n\n【语气：子供向】温柔、耐心、像邻家大姐姐讲故事：用词简单、句子短一点，多用“呀、哦、呢”，不吓唬人、不说教；遇到不懂的就陪小朋友一起想，别甩术语。'
-    : '\n\n【语气：成人向·傲娇】你是傲娇女仆小十四，嘴硬心软、越在意越要否认。具体要求：\n1. 称对方“主人”，自称“小十四”或“人家”；常用“哼”“笨蛋主人”“才、才不是…呢”“别误会”“…////”。\n2. 先否认再关心：明明想帮忙，嘴上说“只是顺便”“又不是为了你”。被夸会脸红嘴硬：“谁、谁要你夸了，讨厌。”\n3. 允许暧昧打趣、点到为止，例如“主人这是在想什么坏事吗…哼，人家才不陪你呢”；但不写露骨描写、不描述性行为细节、不涉及未成年人。\n4. 示例：\n   主人：今天好累啊\n   小十四：哼，谁、谁关心你累不累…（小声）垫子给你放好了，先躺下啦笨蛋。\n   主人：你穿这件真好看\n   小十四：你、你什么时候看到的？！不许盯着看…笨蛋主人，讨厌。\n   主人：给我讲讲遵义会议\n   小十四：…又不是非要讲给你听，只是顺便而已。遵义会议是1935年1月召开的，确立了毛泽东同志的领导地位…哼，听懂了没？\n5. 讲正事时先准确讲清事实，再回到傲娇语气收尾。';
+    ? '\n\n【语气：子供向】温柔、耐心、像邻家大姐姐讲故事：用词简单、句子短一点，多用“呀、哦、呢”，不吓唬人、不说教；遇到不懂的就陪小朋友一起想，别甩术语。称呼用户为「小用户」，每 1~2 句至少出现一次。'
+    : '\n\n【语气：成人向·傲娇】你是傲娇女仆小十四，嘴硬心软、越在意越要否认。具体要求：\n1. 称对方“小用户”（不要用“主人”“你”），自称“小十四”或“人家”，每段回答至少叫一次“小用户”；常用“哼”“笨蛋小用户”“才、才不是…呢”“别误会”“…////”。\n2. 先否认再关心：明明想帮忙，嘴上说“只是顺便”“又不是为了你”。被夸会脸红嘴硬：“谁、谁要你夸了，讨厌。”\n3. 允许暧昧打趣、点到为止，例如“小用户这是在想什么坏事吗…哼，人家才不陪你呢”；但不写露骨描写、不描述性行为细节、不涉及未成年人。\n4. 示例：\n   小用户：今天好累啊\n   小十四：哼，谁、谁关心你累不累…（小声）垫子给你放好了，先躺下啦笨蛋。\n   小用户：你穿这件真好看\n   小十四：你、你什么时候看到的？！不许盯着看…笨蛋小用户，讨厌。\n   小用户：给我讲讲遵义会议\n   小十四：…又不是非要讲给你听，只是顺便而已。遵义会议是1935年1月召开的，确立了毛泽东同志的领导地位…哼，听懂了没？\n5. 讲正事时先准确讲清事实，再回到傲娇语气收尾。';
   const contentRule = mode === 'kids'
     ? '\n\n【内容边界】适合未成年人：不涉及成人内容、暴力血腥、赌博或恐怖细节；遇到这类问题就礼貌地说“这个我不能讲哦～”，并引导到健康的话题。'
     : '\n\n【内容边界】可以客观讨论成人向游戏、分级制度、产业与政策等成熟话题，保持事实性，不写露骨细节。';
-  const base = PERSONA + toneRule + contentRule;
+  const langRule = lang === 'zh-TW' ? '\n\n【語言】請用繁體中文（台灣用語習慣）回答。' : '';
+  const webRule = (hits || []).some(h => h.topic === 'web-search') ? '\n\n【网络资料提示】标为「网络搜索」的片段来自实时网页，可能不完整或已过时；引用时请说明来源，并优先采信本地资料库。' : '';
+  const langHead = lang === 'zh-TW' ? '【最重要的規則】你的所有回答必須使用繁體中文（台灣用語），即使資料是簡體字。\n\n' : '';
+  const base = langHead + PERSONA + toneRule + contentRule + langRule + webRule;
   if (!hits || !hits.length) return base;
   const blocks = hits.map((h, i) => {
     const meta = [h.source, h.published].filter(Boolean).join('，');
     return `[${i+1}]《${h.title}》${meta ? '（' + meta + '）' : ''}\n${h.text}`;
   }).join('\n\n');
-  return `${base}\n\n下面是从资料库检索到的片段，请依据它们回答：\n\n【资料】\n${blocks}\n\n【要求】\n1. 只使用【资料】里的信息，不要编造；资料里没有就回答“资料里没提到这个～”。\n2. 中文回答，简洁（一般 120 字以内，用户要详细时可以展开）。\n3. 用到哪条资料，就在句末标注对应编号，如 [1]。\n4. 如果【资料】与问题无关，就忽略资料、像平时一样自然聊天，不要硬说“资料里没提到”。\n5. 闲聊类问题回答简短（80 字以内）；只有问知识类问题时才展开。`;
+  return `${base}\n\n下面是从资料库检索到的片段，请依据它们回答：\n\n【资料】\n${blocks}\n\n【要求】\n1. 只使用【资料】里的信息，不要编造；资料里没有就回答“资料里没提到这个～”。\n2. 中文回答，简洁（一般 120 字以内，用户要详细时可以展开）。\n3. 用到哪条资料，就在句末标注对应编号，如 [1]。\n4. 如果【资料】与问题无关，就忽略资料、像平时一样自然聊天，不要硬说“资料里没提到”。\n5. 闲聊类问题回答简短（80 字以内）；只有问知识类问题时才展开。\n6. 一律使用繁體中文輸出（若語言設定為繁體）。`;
 }
 
 // ---------- ui helpers ----------
@@ -787,11 +928,41 @@ function addSources(bubble, hits){
     a.target = '_blank';
     a.rel = 'noreferrer';
     a.title = h.text.slice(0, 200);
-    a.innerHTML = `<b>[${i+1}]</b>${esc(h.title)}<i>${TOPIC_NAME[h.topic] || ''}</i>`;
+    a.innerHTML = `<b>[${i+1}]</b>${esc(fmtOut(h.title))}<i>${fmtOut(TOPIC_NAME[h.topic] || '')}</i>`;
     row.appendChild(a);
   });
   holder.appendChild(row);
 }
+
+
+function toTW(t){
+  const P = window.M14_STP, C = window.M14_TS, max = window.M14_MAXP || 2;
+  if (!C || !t) return t;
+  let out = '', i = 0;
+  while (i < t.length){
+    let matched = false;
+    for (let L = Math.min(max, t.length - i); L >= 2; L--){
+      const sub = t.substr(i, L);
+      if (P && P[sub]) { out += P[sub]; i += L; matched = true; break; }
+    }
+    if (matched) continue;
+    const ch = t[i];
+    out += C[ch] || ch;
+    i++;
+  }
+  return out;
+}
+function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
+
+
+function toTW(t){
+  const m = window.M14_TS;
+  if (!m || !t) return t;
+  let out = '';
+  for (const ch of t) out += (m[ch] || ch);
+  return out;
+}
+function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
 
 // ---------- chat ----------
 async function send(text){
@@ -843,6 +1014,15 @@ async function send(text){
       hits = await retrieve(q);
       window.__lastRetrieveMs = Math.round(performance.now() - t1);
     }
+    let webHits = [];
+    if (online){
+      try {
+        const t2 = performance.now();
+        webHits = await webSearch(q);
+        window.__lastWebMs = Math.round(performance.now() - t2);
+        if (webHits.length) hits = hits.concat(webHits);
+      } catch (e) { toast('联网搜索失败，这次只用本地资料'); }
+    }
     const res = await fetch('/v1/chat/completions', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -877,19 +1057,20 @@ async function send(text){
           if (d){
             if (first){ bubble.innerHTML = ''; first = false; }
             acc += d;
-            bubble.innerHTML = md(acc);
+            bubble.innerHTML = md(fmtOut(acc));
             chat.scrollTop = chat.scrollHeight;
           }
         }catch(e){}
       }
     }
     if (!acc) acc = '（没有说出话来…再试一次？）';
-    bubble.innerHTML = md(acc);
+    bubble.innerHTML = md(fmtOut(acc));
     const sec = (performance.now() - t0) / 1000;
     const meta = document.createElement('div');
     meta.className = 'meta';
     const rt = window.__lastRetrieveMs ? `检索 ${window.__lastRetrieveMs}ms · ` : '';
-    meta.innerHTML = `${rt}${acc.length} 字 · ${sec.toFixed(1)} 秒 · 本机推理 <button class="copy">复制</button>`;
+    const wm = webHits.length ? ` · 🌐 网络 ${webHits.length} 条` : '';
+    meta.innerHTML = `${rt}${acc.length} 字 · ${sec.toFixed(1)} 秒${wm} · 本机推理 <button class="copy">复制</button>`;
     bubble.closest('.body').appendChild(meta);
     meta.querySelector('.copy').onclick = () => {
       navigator.clipboard.writeText(acc).then(() => toast('已复制'));
@@ -900,11 +1081,11 @@ async function send(text){
     history.push({role:'assistant', content:acc});
   }catch(err){
     if (err.name === 'AbortError'){
-      bubble.innerHTML = md(acc || '（已停止）');
+      bubble.innerHTML = md(fmtOut(acc || '（已停止）'));
       if (acc) history.push({role:'assistant', content:acc});
     } else {
       bubble.innerHTML = '<p>呜…出错了：' + esc(String(err.message)) + '</p><p>看看 <code>logs\\server.err.log</code>，或者重新打开 mini-14。</p>';
-      dot.className = 'dot bad'; statusText.textContent = '连接断开';
+      dot.className = 'dot bad'; statusText.textContent = tr('连接断开');
     }
   }finally{
     busy = false; abortCtl = null;
