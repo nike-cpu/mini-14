@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mini-14 · 本地离线 AI 助手 | 开源小模型 + 个人知识库</title>
+<meta name="description" content="mini-14 是一个完全离线的本地 AI 助手：Qwen2.5-1.5B 小模型 + bge-m3 向量检索 + BM25 混合排序，3 万条个人知识库，分片索引按需加载，断网可用。开源 MIT。" />
+<meta name="keywords" content="本地AI,离线AI,llama.cpp,Qwen2.5,bge-m3,RAG,知识库,向量检索,小模型,开源,隐私,self-hosted AI,local LLM,offline assistant" />
+<link rel="canonical" href="https://nike-cpu.github.io/mini-14/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="mini-14 · 本地离线 AI 助手" />
+<meta property="og:description" content="小模型 + 个人知识库 + 可切换人格，全部跑在你自己的电脑上，断网可用。MIT 开源。" />
+<meta property="og:image" content="screenshots/ui-new.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="screenshots/icon.png" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "mini-14",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Windows, Linux, macOS",
+  "description": "完全离线的本地 AI 助手：小模型 + 个人知识库 + 可切换人格，断网可用，MIT 开源。",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CNY" },
+  "license": "https://opensource.org/licenses/MIT"
+}
+</script>
+<style>
+  :root{
+    --bg:#fbf7f3; --card:#fff; --line:#efe0d6; --text:#382c2a; --muted:#9b8884;
+    --red:#d1544a; --red2:#e8746a; --soft:#ffe9e5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.75}
+  a{color:var(--red)}
+  .wrap{max-width:980px;margin:0 auto;padding:0 22px}
+  header{padding:56px 0 30px;text-align:center}
+  header img.ava{width:96px;height:96px;border-radius:50%;border:3px solid #fff;box-shadow:0 12px 32px rgba(209,84,74,.22)}
+  h1{font-size:40px;margin:18px 0 8px;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:16px;margin:0 auto;max-width:640px}
+  .btns{margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:12px 24px;border-radius:12px;font-weight:700;text-decoration:none;font-size:15px}
+  .btn.primary{background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;box-shadow:0 8px 20px rgba(209,84,74,.28)}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--text)}
+  section{padding:36px 0}
+  h2{font-size:24px;margin:0 0 18px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+  .card .ic{font-size:22px}
+  .card h3{font-size:15px;margin:8px 0 6px}
+  .card p{font-size:13px;color:var(--muted);margin:0}
+  .shot{border-radius:16px;border:1px solid var(--line);width:100%;display:block;margin:10px 0;box-shadow:0 10px 30px rgba(90,50,40,.08)}
+  pre{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;overflow:auto;font-size:13px;line-height:1.7}
+  code{font-family:ui-monospace,Consolas,monospace}
+  footer{border-top:1px solid var(--line);margin-top:30px;padding:24px 0 40px;color:var(--muted);font-size:13px;text-align:center}
+  @media (max-width:760px){ .grid{grid-template-columns:1fr} h1{font-size:30px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="ava" src="screenshots/avatar.png" alt="mini-14 小十四" />
+    <h1>mini-14</h1>
+    <p class="sub">一个完全离线的本地 AI 助手：小模型 + 个人知识库 + 可切换人格。<br/>跑在你自己的电脑上，不上传、不联网、不花钱。</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/nike-cpu/mini-14">在 GitHub 上查看源码</a>
+      <a class="btn ghost" href="https://github.com/nike-cpu/mini-14#快速开始">快速开始</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>它是什么</h2>
+    <img class="shot" src="screenshots/ui-new.png" alt="mini-14 聊天界面" />
+    <div class="grid">
+      <div class="card"><div class="ic">🧠</div><h3>本地推理</h3><p>llama.cpp + Vulkan 加速，Qwen2.5-1.5B 量化模型，普通笔记本也能跑。</p></div>
+      <div class="card"><div class="ic">📚</div><h3>个人知识库</h3><p>bge-m3 向量 + BM25 混合检索，支持 3 万条资料、20 个主题。</p></div>
+      <div class="card"><div class="ic">⚡</div><h3>分片索引</h3><p>按主题拆分索引，打开只加载 KB 级 manifest，提问时按语义路由加载命中的分片。</p></div>
+      <div class="card"><div class="ic">🎭</div><h3>双人格</h3><p>子供向（温柔简单）与成人向（傲娇嘴硬）两套语气与内容边界。</p></div>
+      <div class="card"><div class="ic">📥</div><h3>随手入库</h3><p>网页拖拽、收件箱、JSONL 批量导入，导入后自动重建索引。</p></div>
+      <div class="card"><div class="ic">🔌</div><h3>真正离线</h3><p>所有请求只发往 127.0.0.1，拔掉网线照样聊，数据只在你本机。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>三分钟跑起来</h2>
+    <pre><code>git clone https://github.com/nike-cpu/mini-14.git
+cd mini-14
+
+# 1) 放入两个 GGUF 模型到 models\
+#    qwen2.5-1.5b-instruct-q4_k_m.gguf
+#    bge-m3-Q4_K_M.gguf
+
+# 2) 启动（Windows）
+powershell -ExecutionPolicy Bypass -File .\launcher.ps1
+
+# 3) 浏览器打开
+#    http://127.0.0.1:18014/       聊天
+#    http://127.0.0.1:18014/kb.html 资料库</code></pre>
+  </section>
+
+  <section>
+    <h2>为什么做它</h2>
+    <p class="sub" style="margin:0">云端助手很聪明，但你的笔记、语料、对话都得出门。mini-14 把「检索 + 小模型 + 人格」塞进一台普通电脑，
+    用 1.5B 的参数、几十毫秒的检索和一套可换的外观，做到够用、够快、够私密。</p>
+  </section>
+
+  <footer>
+    MIT License · <a href="https://github.com/nike-cpu/mini-14">GitHub</a> · 用 llama.cpp、Qwen2.5、bge-m3 构建
+  </footer>
+</div>
+</body>
+</html>
