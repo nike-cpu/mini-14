@@ -179,6 +179,51 @@ async function addDoc({ name, text, url = '', source = '网页导入', topic = '
   return { added: fresh.length, total: kb.count };
 }
 
+
+const SEARCH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+
+function stripTags(x) {
+  return String(x || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+}
+
+async function search360(q) {
+  const url = 'https://www.so.com/s?q=' + encodeURIComponent(q);
+  const r = await fetch(url, { headers: { 'User-Agent': SEARCH_UA, 'Accept-Language': 'zh-CN,zh;q=0.9' }, signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error('so.com ' + r.status);
+  const h = await r.text();
+  const out = [];
+  for (const m of h.matchAll(/<li[^>]*class="[^"]*res-list[^"]*"[\s\S]*?<\/li>/g)) {
+    const block = m[0];
+    const a = block.match(/<a[^>]*data-mdurl="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+    const desc = block.match(/<p class="res-desc">([\s\S]*?)<\/p>/);
+    if (!a) continue;
+    const title = stripTags(a[2]);
+    const snippet = desc ? stripTags(desc[1]) : '';
+    if (!title) continue;
+    out.push({ title, url: a[1], snippet });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+async function searchBing(q) {
+  const url = 'https://cn.bing.com/search?q=' + encodeURIComponent(q) + '&mkt=zh-CN';
+  const r = await fetch(url, { headers: { 'User-Agent': SEARCH_UA, 'Accept-Language': 'zh-CN,zh;q=0.9' }, signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error('bing ' + r.status);
+  const h = await r.text();
+  const out = [];
+  for (const m of h.matchAll(/<li class="b_algo"[\s\S]*?<\/li>/g)) {
+    const block = m[0];
+    const a = block.match(/<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+    const pEl = block.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+    if (!a) continue;
+    out.push({ title: stripTags(a[2]), url: a[1], snippet: pEl ? stripTags(pEl[1]) : '' });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
 const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -248,6 +293,22 @@ const server = http.createServer((req, res) => {
         }
         if (added > 0) scheduleRebuild();
         json(res, 200, { ok: true, files: done, added, errors, rebuilding: added > 0 });
+      } catch (e) {
+        json(res, 500, { ok: false, error: String(e.message || e) });
+      }
+    })();
+    return;
+  }
+
+  if (req.method === 'GET' && req.url.startsWith('/websearch')) {
+    (async () => {
+      try {
+        const q = new URL(req.url, 'http://127.0.0.1').searchParams.get('q') || '';
+        if (!q.trim()) return json(res, 400, { ok: false, error: 'q 不能为空' });
+        let results = [];
+        try { results = await search360(q); } catch (e) { results = []; }
+        if (!results.length) { try { results = await searchBing(q); } catch (e) {} }
+        json(res, 200, { ok: true, q, count: results.length, results });
       } catch (e) {
         json(res, 500, { ok: false, error: String(e.message || e) });
       }
