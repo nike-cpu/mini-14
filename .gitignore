@@ -1,0 +1,20 @@
+# runtime / models / data — never commit these
+models/
+runtime/
+logs/
+backups/
+inbox/
+node_modules/
+*.gguf
+*.f32
+*.npz
+*.pt
+*.zip
+*.7z
+web/kb/
+web/assets/
+__pycache__/
+*.pyc
+Thumbs.db
+desktop.ini
+.DS_Store
