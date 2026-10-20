@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nike-cpu.github.io/mini-14/sitemap.xml
