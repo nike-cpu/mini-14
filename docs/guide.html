@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mini-14 使用指南：下载模型、导入数据库、开启联网搜索</title>
+<meta name="description" content="mini-14 v1.1 完整安装与使用指南：下载 GGUF 模型、选择是否下载知识库、导入本地 zip、开启联网搜索、切换简体繁体、常见问题排查。" />
+<meta name="keywords" content="mini-14 使用指南,本地AI安装,GGUF模型,bge-m3,知识库导入,联网搜索,llama.cpp,离线AI教程" />
+<link rel="canonical" href="https://nike-cpu.github.io/mini-14/guide.html" />
+<meta property="og:title" content="mini-14 使用指南" />
+<meta property="og:description" content="安装、导入数据库、联网搜索、简繁切换与常见问题。" />
+<meta property="og:image" content="screenshots/ui-new.png" />
+<link rel="icon" href="screenshots/icon.png" />
+<style>
+  :root{--bg:#fbf7f3;--card:#fff;--line:#efe0d6;--text:#382c2a;--muted:#9b8884;--red:#d1544a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;line-height:1.85}
+  .wrap{max-width:860px;margin:0 auto;padding:36px 22px 60px}
+  a{color:var(--red)}
+  h1{font-size:30px;margin:0 0 6px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:26px}
+  h2{font-size:20px;margin:34px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:20px 0 6px}
+  p,li{font-size:14px}
+  code{background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px}
+  pre{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow:auto;font-size:13px;line-height:1.7}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;background:#fff}
+  th{background:#f7ece6}
+  .note{background:#fff6f2;border:1px solid #f3ddd4;border-radius:10px;padding:12px 14px;font-size:13px;color:#7a5a52}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>mini-14 使用指南</h1>
+  <div class="meta">版本 v1.1 · 本地离线 AI 助手 · <a href="./">返回首页</a></div>
+
+  <h2>一、准备</h2>
+  <p>需要 Windows 10/11、约 2 GB 磁盘空间（不含知识库），以及两个 GGUF 模型文件：</p>
+  <table>
+    <tr><th>用途</th><th>模型</th></tr>
+    <tr><td>对话</td><td><code>qwen2.5-1.5b-instruct-q4_k_m.gguf</code></td></tr>
+    <tr><td>向量检索</td><td><code>bge-m3-Q4_K_M.gguf</code></td></tr>
+  </table>
+  <p>把模型放进 <code>models\</code>，把 <a href="https://github.com/nike-cpu/mini-14">仓库</a> 克隆或解压到 <code>D:\mini-14</code>，再放入 <code>runtime\</code> 里的 llama.cpp 与 node（仓库 README 有说明）。</p>
+
+  <h2>二、数据库：可选下载</h2>
+  <p>首次双击 <code>mini-14</code> 启动时，如果知识库为空，会弹出三选一菜单：</p>
+  <ol>
+    <li><b>下载 demo 数据库</b>（45 MB，Release 附件，含公版书 / 政府文件 / Apache 语料）</li>
+    <li><b>导入本地 zip</b>（自己打包的库）</li>
+    <li><b>跳过</b>——只用空库聊天，稍后随时可以再下载</li>
+  </ol>
+  <pre><code>:: 也可以手动执行
+powershell -File tools\download-kb.ps1 -Zip D:\下载\mini14-kb.zip</code></pre>
+  <p>导入后会自动重建分片索引；打开聊天页只需加载 2.5 KB 的 manifest，首屏约 0.2 秒。</p>
+
+  <h2>三、日常使用</h2>
+  <h3>1. 对话</h3>
+  <p>双击桌面图标后浏览器打开 <code>http://127.0.0.1:18014/</code>。左侧可切换：</p>
+  <ul>
+    <li><b>子供向 / 成人向</b>：温柔简单 vs 傲娇嘴硬，两个模式都称呼你「小用户」</li>
+    <li><b>知识库检索</b>：关闭后就是纯聊天，不查资料</li>
+    <li><b>联网搜索</b>：开启后回答前先搜 6 条网络结果，标注为「网络」资料</li>
+    <li><b>深色 / 浅色</b>、<b>简 / 繁</b>、正文颜色</li>
+  </ul>
+
+  <h3>2. 加资料</h3>
+  <ul>
+    <li>资料库页面 →「＋ 导入资料」选文件（txt/md/html/csv）</li>
+    <li>或把网页/文本丢进 <code>inbox\</code> →「📥 收件箱」</li>
+    <li>或 <code>node tools\import_jsonl.mjs 你的资料.jsonl 主题名</code></li>
+  </ul>
+
+  <h2>四、常见问题</h2>
+  <h3>导入没反应 / 提示连不上</h3>
+  <p>导入依赖 18018 端口的小服务。双击 <code>修复导入.cmd</code> 一键重启；还不行就重开 App，启动脚本会自动校验。</p>
+  <h3>回答很慢</h3>
+  <p>首次提问要加载模型；之后一般 1 秒内。重复问同一个问题会命中缓存（约 0.2 秒）。</p>
+  <h3>问知识库里的东西却回答「资料里没提到」</h3>
+  <p>说明检索相似度没到阈值。换个说法、把关键词说全，或把「参考资料条数」调大。</p>
+  <h3>能完全断网用吗</h3>
+  <p>能。默认所有请求只发往 <code>127.0.0.1</code>；只有你主动打开「联网搜索」才会把查询词发给搜索引擎。</p>
+
+  <h2>五、版本记录</h2>
+  <table>
+    <tr><th>版本</th><th>内容</th></tr>
+    <tr><td>v1.1</td><td>联网搜索、简繁切换、数据库按需下载、傲娇语气、分片索引、导入自愈、回答缓存</td></tr>
+    <tr><td>v0.1</td><td>本地推理、RAG 检索、资料库、导入、训练室</td></tr>
+  </table>
+
+  <div class="note">项目基于 llama.cpp、Qwen2.5-1.5B 与 bge-m3，MIT 许可开源。模型与完整语料不在仓库内。</div>
+
+  <footer>
+    <a href="./">首页</a> · <a href="https://github.com/nike-cpu/mini-14">GitHub</a> · <a href="https://github.com/nike-cpu/mini-14/releases/tag/v1.1">v1.1 Release</a>
+  </footer>
+</div>
+</body>
+</html>
