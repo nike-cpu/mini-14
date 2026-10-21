@@ -62,6 +62,22 @@ if ($entries.Count -eq 1 -and $entries[0].PSIsContainer) {
 $chunks = Join-Path $kb 'chunks.json'
 if (-not (Test-Path $chunks)) { Write-Host "压缩包里没有 chunks.json，解压失败" -ForegroundColor Red; exit 1 }
 
+# regenerate vectors if the package ships text only
+$vecFile = Join-Path $kb 'vectors.f32'
+$chunkCount = (Get-Content $chunks -Raw -Encoding UTF8 | ConvertFrom-Json).count
+$needVec = (-not (Test-Path $vecFile)) -or ((Get-Item $vecFile).Length -ne ($chunkCount * 1024 * 4))
+if ($needVec) {
+    Write-Step "缺少向量文件，正在用本机向量服务重新生成（约 10~20 分钟）…"
+    $embed = Join-Path $Root 'tools\embed_kb.mjs'
+    if ((Test-Path $node) -and (Test-Path $embed)) {
+        $env:MINI14_ROOT = $Root
+        & $node $embed
+    } else {
+        Write-Host "找不到 node / embed_kb.mjs，无法生成向量；请先启动 mini-14 再重试" -ForegroundColor Yellow
+        exit 1
+    }
+}
+
 Write-Step "重建分片索引…"
 if ((Test-Path $node) -and (Test-Path $shard)) {
     & $node $shard | Select-Object -Last 2
