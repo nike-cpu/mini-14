@@ -28,6 +28,8 @@
 
 ![资料库](docs/screenshots/kb-general.png)
 
+> 📖 **[使用指南（安装 / 导入数据库 / 联网搜索 / 常见问题）](https://nike-cpu.github.io/mini-14/guide.html)**
+
 ---
 
 ## 更新日志
