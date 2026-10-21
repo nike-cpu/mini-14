@@ -956,10 +956,20 @@ function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
 
 
 function toTW(t){
-  const m = window.M14_TS;
-  if (!m || !t) return t;
-  let out = '';
-  for (const ch of t) out += (m[ch] || ch);
+  const P = window.M14_STP, C = window.M14_TS, max = window.M14_MAXP || 2;
+  if (!C || !t) return t;
+  let out = '', i = 0;
+  while (i < t.length){
+    let matched = false;
+    for (let L = Math.min(max, t.length - i); L >= 2; L--){
+      const sub = t.substr(i, L);
+      if (P && P[sub]) { out += P[sub]; i += L; matched = true; break; }
+    }
+    if (matched) continue;
+    const ch = t[i];
+    out += C[ch] || ch;
+    i++;
+  }
   return out;
 }
 function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
