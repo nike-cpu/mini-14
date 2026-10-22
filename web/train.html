@@ -3,39 +3,162 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>训练室（已停用）· mini-14</title>
+<title>训练室 · mini-14</title>
 <link rel="icon" href="fishmaid-avatar.png?v=3" />
 <style>
-  body{
-    margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-    background:#fbf7f3;color:#382c2a;
-    font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
-  }
-  .card{
-    max-width:520px;margin:24px;background:#fff;border:1px solid #efe0d6;border-radius:20px;
-    padding:36px 34px;box-shadow:0 12px 32px rgba(90,50,40,.08);text-align:center;
-  }
-  .ava{width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 8px 24px rgba(209,84,74,.18)}
-  h1{font-size:20px;margin:16px 0 8px}
-  p{color:#9b8884;font-size:13.5px;line-height:1.9;margin:0 0 8px}
-  .tip{background:#fbf1ec;border:1px solid #f2ddd4;border-radius:12px;padding:13px 15px;font-size:13px;color:#7d5e57;margin:16px 0 20px;text-align:left;line-height:1.8}
-  a.back{
-    display:inline-block;background:linear-gradient(135deg,#d1544a,#e8746a);color:#fff;text-decoration:none;
-    padding:10px 22px;border-radius:11px;font-size:13.5px;font-weight:700;box-shadow:0 6px 16px rgba(209,84,74,.25);
-  }
+  :root{--bg:#fbf7f3;--card:#fff;--line:#efe0d6;--text:#382c2a;--muted:#9b8884;--red:#d1544a;--red2:#e8746a;--ok:#2f9e6c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+  .top{max-width:900px;margin:0 auto;padding:22px 22px 0;display:flex;align-items:center;gap:12px}
+  .top img{width:44px;height:44px;border-radius:50%;border:2px solid #fff;box-shadow:0 6px 16px rgba(209,84,74,.2)}
+  .top h1{font-size:20px;margin:0}
+  .top .sub{font-size:12px;color:var(--muted)}
+  .top .grow{flex:1}
+  .top a{font-size:12.5px;color:var(--red);text-decoration:none;border:1px solid var(--line);background:#fff;padding:7px 12px;border-radius:9px}
+  main{max-width:900px;margin:0 auto;padding:18px 22px 40px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 6px 18px rgba(90,50,40,.05)}
+  .card h2{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600;letter-spacing:.4px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;background:#f4ece7;color:var(--text)}
+  .btn.primary{background:linear-gradient(135deg,var(--red),var(--red2));color:#fff}
+  .btn:disabled{opacity:.5;cursor:default}
+  select{border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:13px;background:#fff;color:var(--text)}
+  .bar{height:10px;background:#f1e7e1;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--red2));width:0%;transition:.3s}
+  .meta{font-size:12px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap}
+  canvas{width:100%;height:160px;display:block}
+  .sample{background:#fbf6f2;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.8;white-space:pre-wrap;margin-top:8px;word-break:break-all}
+  .quota{display:flex;gap:20px;align-items:baseline;flex-wrap:wrap}
+  .quota b{font-size:22px}
+  .hint{font-size:12px;color:var(--muted);line-height:1.8;margin:6px 0 0}
 </style>
 </head>
 <body>
-  <div class="card">
-    <img class="ava" src="fishmaid-avatar.png?v=3" alt="mini-14" />
-    <h1>训练室已停用</h1>
-    <p>这个功能已经关闭了，后台的小训练服务也不再启动。</p>
-    <div class="tip">
-      🎨 <b>替代功能：文字颜色</b><br/>
-      打开聊天窗口 → 右上角「设置」→ 顶部「🎨 文字颜色」，<br/>
-      选一个预设色或自定义颜色，正文颜色立刻改变，下次打开也会记住。
-    </div>
-    <a class="back" href="index.html">← 回到聊天</a>
+  <div class="top">
+    <img src="fishmaid-avatar.png?v=3" alt="mini-14" />
+    <div><h1>训练室</h1><div class="sub">用知识库文本训练小模型 · 存储配额 2 GB</div></div>
+    <div class="grow"></div>
+    <a href="index.html">← 回到聊天</a>
   </div>
+
+  <main>
+    <div class="card">
+      <h2>存储</h2>
+      <div class="quota">
+        <div>已用 <b id="used">–</b> / 2 GB</div>
+        <div style="font-size:12.5px;color:var(--muted)">检查点 <span id="ckpts">–</span> 个 · 模型 <span id="hasModel">–</span></div>
+      </div>
+      <div class="bar"><i id="quotaBar"></i></div>
+      <p class="hint">模型、检查点、训练日志都放在 storage\ 目录；每次训练自动从 storage\models\model.npz 接着练，超出 2 GB 会自动停止。</p>
+    </div>
+
+    <div class="card">
+      <h2>训练</h2>
+      <div class="row">
+        <select id="steps">
+          <option value="300">300 步（约 20 秒）</option>
+          <option value="600" selected>600 步（约 40 秒）</option>
+          <option value="1200">1200 步（约 70 秒）</option>
+          <option value="2400">2400 步（约 2.5 分钟）</option>
+        </select>
+        <button class="btn primary" id="startBtn">开始 / 继续训练</button>
+        <button class="btn" id="stopBtn" disabled>停止</button>
+        <span class="meta" id="state">未开始</span>
+      </div>
+      <div class="bar"><i id="trainBar"></i></div>
+      <div class="meta">
+        <span>步数 <span id="stepText">0 / 0</span></span>
+        <span>loss <span id="lossText">–</span></span>
+        <span>用时 <span id="secText">0s</span></span>
+        <span>词表 <span id="vocabText">–</span></span>
+        <span>参数 <span id="paramText">–</span></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>loss 曲线</h2>
+      <canvas id="chart" width="860" height="160"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>它写的东西</h2>
+      <div id="samples"><p class="hint">训练开始后这里会出现她生成的文字。</p></div>
+    </div>
+  </main>
+
+<script>
+const API = 'http://127.0.0.1:18019';
+const $ = (s) => document.querySelector(s);
+
+async function getJSON(url, opts) { const r = await fetch(url, opts); return r.json(); }
+
+function drawChart(history) {
+  const c = $('#chart'), g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  const pts = (history || []).filter(h => typeof h.loss === 'number');
+  if (pts.length < 2) return;
+  const min = Math.min(...pts.map(p => p.loss)), max = Math.max(...pts.map(p => p.loss));
+  const pad = 10, w = c.width - pad * 2, h = c.height - pad * 2;
+  g.strokeStyle = '#e9d9d0'; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const y = pad + h * i / 4; g.beginPath(); g.moveTo(pad, y); g.lineTo(c.width - pad, y); g.stroke(); }
+  g.strokeStyle = '#d1544a'; g.lineWidth = 2.5; g.beginPath();
+  pts.forEach((p, i) => {
+    const x = pad + w * i / (pts.length - 1);
+    const y = pad + h * (1 - (p.loss - min) / (max - min || 1));
+    i ? g.lineTo(x, y) : g.moveTo(x, y);
+  });
+  g.stroke();
+  g.fillStyle = '#9b8884'; g.font = '11px sans-serif';
+  g.fillText(max.toFixed(2), 4, 14);
+  g.fillText(min.toFixed(2), 4, c.height - 4);
+}
+
+async function refreshStorage() {
+  try {
+    const s = await getJSON(API + '/storage');
+    $('#used').textContent = (s.usedMB / 1000).toFixed(2) + ' GB';
+    $('#ckpts').textContent = s.checkpoints;
+    $('#hasModel').textContent = s.models ? '已保存' : '无';
+    $('#quotaBar').style.width = Math.min(100, s.usedPct) + '%';
+  } catch (e) {}
+}
+
+async function tick() {
+  try {
+    const st = await getJSON(API + '/status');
+    const running = !!st.running;
+    $('#startBtn').disabled = running;
+    $('#stopBtn').disabled = !running;
+    $('#state').textContent = running ? '训练中…' : (st.done ? '已完成' : (st.step ? '已停止' : '未开始'));
+    $('#stepText').textContent = (st.step || 0) + ' / ' + (st.total || 0);
+    $('#lossText').textContent = st.loss != null ? st.loss : '–';
+    $('#secText').textContent = (st.sec || 0) + 's';
+    if (st.info) {
+      $('#vocabText').textContent = st.info.vocab || '–';
+      $('#paramText').textContent = (st.info.params || 0).toLocaleString();
+    }
+    $('#trainBar').style.width = (st.total ? Math.min(100, st.step / st.total * 100) : 0) + '%';
+    drawChart(st.history);
+    if (st.samples && st.samples.length) {
+      $('#samples').innerHTML = st.samples.slice().reverse().map(s =>
+        '<div class="sample"><b>第 ' + s.step + ' 步：</b>\n' + (s.text || '').replace(/</g, '&lt;') + '</div>'
+      ).join('');
+    }
+    if (!running) refreshStorage();
+  } catch (e) { $('#state').textContent = '连不上训练服务'; }
+}
+
+$('#startBtn').onclick = async () => {
+  const steps = parseInt($('#steps').value, 10) || 600;
+  $('#state').textContent = '启动中…';
+  await getJSON(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps }) });
+  setTimeout(tick, 500);
+};
+$('#stopBtn').onclick = async () => { await getJSON(API + '/stop', { method: 'POST' }); setTimeout(tick, 500); };
+
+refreshStorage();
+tick();
+setInterval(tick, 1000);
+</script>
 </body>
 </html>
