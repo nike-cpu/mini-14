@@ -94,6 +94,12 @@ button{font-family:inherit}
   border-radius:10px;font-size:12px;cursor:pointer;
 }
 .sidefoot button:hover{color:var(--red);border-color:var(--red)}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.quick a{
+  display:flex;align-items:center;justify-content:center;gap:5px;height:32px;border-radius:9px;
+  background:var(--card);border:1px solid var(--line);color:var(--text);text-decoration:none;font-size:12px;
+}
+.quick a:hover{border-color:var(--red);color:var(--red)}
 
 /* ---------- main ---------- */
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -247,6 +253,14 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
     <div class="mode" id="modeBtn" title="切换内容取向">
       <span data-m="kids">🌱 子供向<span class="hint">温柔讲给小朋友</span></span>
       <span data-m="adult">🔞 成人向<span class="hint">撒娇带点挑逗</span></span>
+    </div>
+
+    <div class="sect">快捷入口</div>
+    <div class="quick" id="quickLinks">
+      <a href="https://www.baidu.com/" target="_blank" rel="noreferrer">🔍 百度</a>
+      <a href="https://www.bilibili.com/" target="_blank" rel="noreferrer">📺 B站</a>
+      <a href="https://www.douyin.com/" target="_blank" rel="noreferrer">🎵 抖音</a>
+      <a href="https://github.com/nike-cpu/mini-14" target="_blank" rel="noreferrer">🐙 GitHub</a>
     </div>
 
     <div class="sect">功能</div>
@@ -453,7 +467,8 @@ function applyLang(){
   });
   const sects = document.querySelectorAll('.sect');
   if (sects[0]) sects[0].textContent = lang === 'zh-TW' ? '對話取向' : '对话取向';
-  if (sects[1]) sects[1].textContent = lang === 'zh-TW' ? '功能' : '功能';
+  if (sects[1]) sects[1].textContent = lang === 'zh-TW' ? '快捷入口' : '快捷入口';
+  if (sects[2]) sects[2].textContent = lang === 'zh-TW' ? '功能' : '功能';
   input.placeholder = PLACEHOLDER[lang];
   document.documentElement.lang = lang === 'zh-TW' ? 'zh-Hant' : 'zh-CN';
   const lb = document.getElementById('langBtn');
