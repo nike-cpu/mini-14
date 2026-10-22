@@ -358,6 +358,10 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
   <input type="range" id="maxlen" min="64" max="1024" step="32" value="256" />
   <label><span>参考资料条数</span><span id="topkVal">3</span></label>
   <input type="range" id="topk" min="1" max="8" step="1" value="2" />
+  <label style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+    <span>🧠 小模型重排（实验）</span>
+    <input type="checkbox" id="rerank" style="width:16px;height:16px;accent-color:var(--red)" />
+  </label>
   <div class="note" id="kbNote">知识库：加载中…</div>
   <a href="kb.html" target="_blank" rel="noreferrer">🗂 打开资料库（浏览 / 搜索全部资料）→</a>
   
@@ -589,6 +593,29 @@ $('#webBtn').onclick = () => {
   applyOnline();
   toast(online ? '联网搜索已开启：回答前会先搜网络' : '联网搜索已关闭：只用本地资料');
 };
+
+let rerankOn = localStorage.getItem('mini14-rerank') === '1';
+(function(){
+  const el = $('#rerank');
+  if (el) {
+    el.checked = rerankOn;
+    el.onchange = () => {
+      rerankOn = el.checked;
+      localStorage.setItem('mini14-rerank', rerankOn ? '1' : '0');
+      toast(rerankOn ? '小模型重排已开启（每次提问会多花约 1 秒）' : '小模型重排已关闭');
+    };
+  }
+})();
+
+async function smallScore(texts){
+  const r = await fetch('http://127.0.0.1:18019/score', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts })
+  });
+  const j = await r.json();
+  if (!j.ok) return null;
+  return j.scores.map(x => (x.ppl ? -Math.log(x.ppl) : -20));
+}
 
 async function webSearch(q){
   const r = await fetch('http://127.0.0.1:18018/websearch?q=' + encodeURIComponent(q), { cache: 'no-store' });
@@ -1039,6 +1066,16 @@ async function send(text){
       const t1 = performance.now();
       hits = await retrieve(q);
       window.__lastRetrieveMs = Math.round(performance.now() - t1);
+      if (rerankOn && hits.length > 1){
+        try {
+          const scores = await smallScore(hits.map(h => (h.title || '') + '\n' + (h.text || '')));
+          if (scores) {
+            const z = zscore(scores);
+            hits = hits.map((h, i) => ({ ...h, score: 0.85 * h.score + 0.15 * z[i] }))
+                       .sort((a, b) => b.score - a.score);
+          }
+        } catch (e) {}
+      }
     }
     let webHits = [];
     if (online){
