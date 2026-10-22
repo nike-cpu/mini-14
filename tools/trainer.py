@@ -36,6 +36,29 @@ def load_text(kb_path, max_chars):
     return "\n".join(parts)[:max_chars]
 
 
+def dir_size(path):
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for f in files:
+            try:
+                total += os.path.getsize(os.path.join(root, f))
+            except OSError:
+                pass
+    return total
+
+
+def rotate_ckpt(ckpt_dir, keep=5):
+    files = sorted(
+        (os.path.join(ckpt_dir, f) for f in os.listdir(ckpt_dir) if f.startswith("ckpt-")),
+        key=lambda x: os.path.getmtime(x),
+    )
+    while len(files) > keep:
+        try:
+            os.remove(files.pop(0))
+        except OSError:
+            break
+
+
 def softmax(z):
     z = z - z.max(axis=1, keepdims=True)
     e = np.exp(z)
@@ -70,6 +93,10 @@ def main():
     ap.add_argument("--batch", type=int, default=128)
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--chars", type=int, default=1_000_000)
+    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--ckpt-dir", default="")
+    ap.add_argument("--ckpt-every", type=int, default=200)
+    ap.add_argument("--max-gb", type=float, default=2.0)
     args = ap.parse_args()
 
     rng = np.random.default_rng(42)
@@ -95,8 +122,26 @@ def main():
         "W2": rng.normal(0, np.sqrt(2.0 / H), (H, V)).astype(np.float32),
         "b2": np.zeros(V, dtype=np.float32),
     }
+    resumed_from = None
+    if args.resume and os.path.exists(args.out):
+        try:
+            blob = np.load(args.out, allow_pickle=True)
+            loaded_vocab = [str(c) for c in blob["vocab"]]
+            if loaded_vocab == vocab:
+                for k in params:
+                    if k in blob:
+                        v = blob[k]
+                        if v.shape == params[k].shape:
+                            params[k] = np.array(v, dtype=np.float32)
+                resumed_from = args.out
+        except Exception:
+            resumed_from = None
     nparams = sum(p.size for p in params.values())
-    log({"type": "info", "vocab": V, "chars": len(text), "params": int(nparams)})
+    storage = os.path.dirname(os.path.abspath(args.out))
+    used = dir_size(storage) if os.path.isdir(storage) else 0
+    log({"type": "info", "vocab": V, "chars": len(text), "params": int(nparams),
+         "resumed": bool(resumed_from), "storage_mb": round(used / 1e6, 1),
+         "budget_gb": args.max_gb})
 
     opt = Adam(params, lr=args.lr)
     t0 = time.time()
@@ -139,6 +184,16 @@ def main():
             log({"type": "step", "step": step, "total": args.steps,
                  "loss": round(sum(running) / len(running), 4),
                  "sec": round(time.time() - t0, 1)})
+
+        if args.ckpt_dir and step % args.ckpt_every == 0:
+            os.makedirs(args.ckpt_dir, exist_ok=True)
+            ck = os.path.join(args.ckpt_dir, "ckpt-%06d.npz" % step)
+            np.savez(ck, vocab=[c for c in vocab], **{k: v for k, v in params.items()})
+            rotate_ckpt(args.ckpt_dir)
+            used = dir_size(storage)
+            if used > args.max_gb * 1e9:
+                log({"type": "error", "message": "storage budget exceeded: %.1f MB" % (used / 1e6)})
+                break
 
         if step % 100 == 0 or step == args.steps:
             prompt = text[:C] if len(text) >= C else text
