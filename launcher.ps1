@@ -112,6 +112,16 @@ function Start-Train {
     } catch {}
 }
 
+function Start-Train {
+    $nodeExe = Join-Path $root 'runtime\node\node.exe'
+    $script  = Join-Path $root 'tools\train-service.mjs'
+    if (-not (Test-Path $nodeExe) -or -not (Test-Path $script)) { return }
+    if (Test-Port $trainPort) { return }
+    $vbs = Join-Path $root 'tools\run-train.vbs'
+    if (Test-Path $vbs) {
+        Start-Process -FilePath "$env:WINDIR\System32\wscript.exe" -ArgumentList "`"$vbs`"" -WindowStyle Hidden
+    }
+}
 function Start-Ingest {
     $nodeExe = Join-Path $root 'runtime\node\node.exe'
     $script  = Join-Path $root 'tools\ingest-server.mjs'
@@ -132,6 +142,7 @@ if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Force $logDir | Ou
 
 Start-Embedding
 Start-Ingest
+Start-Train
 Start-Sleep -Seconds 2
 if (-not (Test-Port $ingPort)) { Start-Ingest; Start-Sleep -Seconds 2 }
 
