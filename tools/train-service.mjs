@@ -12,6 +12,8 @@ const STORAGE = path.join(ROOT, 'storage');
 const LOG = path.join(STORAGE, 'logs', 'train.jsonl');
 const OUT = path.join(STORAGE, 'models', 'model.npz');
 const CKPT = path.join(STORAGE, 'checkpoints');
+const SCORE_PY = path.join(ROOT, 'tools', 'score.py');
+const TMP = path.join(STORAGE, 'logs', 'score-in.json');
 const MAX_GB = 2;
 const PORT = 18019;
 
@@ -88,6 +90,31 @@ const server = http.createServer((req, res) => {
     return json(res, 200, { ok: true });
   }
 
+  if (req.method === 'POST' && req.url.startsWith('/score')) {
+    let body = '';
+    req.on('data', b => { body += b; if (body.length > 2e6) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const o = JSON.parse(body || '{}');
+        const texts = (o.texts || []).slice(0, 12).map(t => String(t).slice(0, 1200));
+        if (!fs.existsSync(OUT)) return json(res, 400, { ok: false, error: '还没有训练好的模型' });
+        fs.mkdirSync(path.dirname(TMP), { recursive: true });
+        fs.writeFileSync(TMP, JSON.stringify({ model: OUT, texts }), 'utf8');
+        const child = spawn(PY, [SCORE_PY, TMP], { windowsHide: true });
+        let out = '';
+        child.stdout.on('data', d => { out += d; });
+        child.stderr.on('data', d => { out += d; });
+        child.on('exit', () => {
+          try { json(res, 200, JSON.parse(out)); }
+          catch { json(res, 500, { ok: false, error: 'score failed: ' + out.slice(0, 120) }); }
+        });
+      } catch (e) {
+        json(res, 500, { ok: false, error: String(e.message || e) });
+      }
+    });
+    return;
+  }
+
   if (req.method === 'POST' && req.url.startsWith('/start')) {
     if (child) return json(res, 409, { ok: false, error: '正在训练中' });
     if (!fs.existsSync(PY)) return json(res, 500, { ok: false, error: '训练环境没装好（runtime\\py）' });
@@ -96,7 +123,7 @@ const server = http.createServer((req, res) => {
     req.on('data', b => { body += b; if (body.length > 65536) req.destroy(); });
     req.on('end', () => {
       let steps = 600;
-      try { const o = JSON.parse(body || '{}'); if (o.steps) steps = Math.max(100, Math.min(5000, parseInt(o.steps, 10))); } catch {}
+      try { const o = JSON.parse(body || '{}'); if (o.steps) steps = Math.max(100, Math.min(50000, parseInt(o.steps, 10))); } catch {}
       fs.mkdirSync(path.dirname(LOG), { recursive: true });
       fs.writeFileSync(LOG, '');
       lastError = null;
