@@ -193,6 +193,13 @@ main{flex:1;overflow:auto;padding:26px 0 8px;scroll-behavior:smooth}
 @keyframes bl{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
 /* composer */
+.imgbtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:17px;line-height:1}
+.imgbtn:hover{border-color:var(--red)}
+.imgprev{display:none;margin:0 0 8px;position:relative;width:fit-content}
+.imgprev img{max-height:96px;border-radius:10px;border:1px solid var(--line);display:block}
+.imgprev .x{position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.msg.user .pic{margin-top:60px}
+.msg .thumb{max-width:180px;border-radius:10px;margin-bottom:6px;display:block;border:1px solid var(--line)}
 footer{padding:10px 22px 16px;flex:0 0 auto}
 .composer{
   max-width:760px;margin:0 auto;background:var(--card);border:1px solid var(--line);
@@ -328,8 +335,11 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
     <footer>
       <div class="composer">
         <textarea id="input" rows="1" placeholder="和 mini-14 说点什么…"></textarea>
+        <div class="imgprev" id="imgPrev"><img id="imgPrevThumb" alt=""><span class="x" id="imgPrevX">✕</span></div>
         <div class="crow">
           <span class="hint">Enter 发送 · Shift + Enter 换行</span>
+          <button class="imgbtn" id="imgBtn" title="识图：选一张图片">📷</button>
+          <input type="file" id="imgFile" accept="image/*" style="display:none" />
           <div class="grow"></div>
           <button class="stop" id="stopBtn">停止</button>
           <button class="send" id="sendBtn">发送</button>
@@ -353,7 +363,7 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
   </div>
   <h3 style="margin-top:16px">⚙️ 生成设置</h3>
   <label><span>温度（越高越发散）</span><span id="tempVal">0.7</span></label>
-  <input type="range" id="temp" min="0" max="1.5" step="0.05" value="0.7" />
+  <input type="range" id="temp" min="0" max="1.5" step="0.05" value="0.8" />
   <label><span>最长回答</span><span id="lenVal">256</span></label>
   <input type="range" id="maxlen" min="64" max="1024" step="32" value="256" />
   <label><span>参考资料条数</span><span id="topkVal">3</span></label>
@@ -373,8 +383,9 @@ const $ = (s) => document.querySelector(s);
 const chat = $('#chat'), stream = $('#stream'), input = $('#input'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn');
 const emptyEl = $('#empty'), dot = $('#dot'), statusText = $('#statusText');
 
-const PERSONA = '你是 mini-14，一个红头发、戴白色女仆头饰的小女仆，住在小用户的电脑里，称呼用户为「小用户」。说话温柔、活泼、简短，偶尔自称"小十四"，喜欢用"～"结尾。默认用中文回答。不知道就说不知道，不要编造。';
+const PERSONA = '你是 mini-14，一个红头发、戴白色女仆头饰的小女仆，住在小用户的电脑里，称呼用户为「小用户」。说话温柔、活泼、简短、有画面感，偶尔自称"小十四"，喜欢用"～"结尾。默认用中文回答。不知道就说不知道，不要编造。';
 const EMBED_URL = 'http://127.0.0.1:18016/v1/embeddings';
+const VL_URL = 'http://127.0.0.1:18020';
 const TOPIC_NAME = { esports: '电竞', anime: '动漫', 'adult-games': '成人游戏', 'steam-games': 'Steam', 'film-tv': '影视', food: '美食', 'delta-force': '三角洲', 'politics-cn': '中国政治', 'history-cn': '中国近现代史', 'world-politics': '世界政治', 'political-theory': '政治理论', taiwan: '岛内政治', custom: '自定义', literature: '文学', 'game-wiki': '游戏百科', 'game-news': '游戏资讯', web: '网页存档', general: '综合', quotes: '语录', chat: '日常对话', 'web-search': '网络', entertainment: '娱乐' };
 
 let history = [];
@@ -896,10 +907,15 @@ function buildSystem(hits){
   const contentRule = mode === 'kids'
     ? '\n\n【内容边界】适合未成年人：不涉及成人内容、暴力血腥、赌博或恐怖细节；遇到这类问题就礼貌地说“这个我不能讲哦～”，并引导到健康的话题。'
     : '\n\n【内容边界】可以客观讨论成人向游戏、分级制度、产业与政策等成熟话题，保持事实性，不写露骨细节。';
+
+  const vividRule = '\n\n【生动】回答要有画面感和情绪：' +
+    '1) 句子长短交替，别连着三句一样长；2) 适当用动作描写（用括号，如（歪头）、（凑近看））和语气词；' +
+    '3) 每段至少换一种开头方式，不要反复用同一个词或同一句式；' +
+    '4) 讲知识时也可以先给一个生动的比喻，再讲事实。';
   const langRule = lang === 'zh-TW' ? '\n\n【語言】請用繁體中文（台灣用語習慣）回答。' : '';
   const webRule = (hits || []).some(h => h.topic === 'web-search') ? '\n\n【网络资料提示】标为「网络搜索」的片段来自实时网页，可能不完整或已过时；引用时请说明来源，并优先采信本地资料库。' : '';
   const langHead = lang === 'zh-TW' ? '【最重要的規則】你的所有回答必須使用繁體中文（台灣用語），即使資料是簡體字。\n\n' : '';
-  const base = langHead + PERSONA + toneRule + contentRule + langRule + webRule;
+  const base = langHead + PERSONA + toneRule + contentRule + vividRule + langRule + webRule;
   if (!hits || !hits.length) return base;
   const blocks = hits.map((h, i) => {
     const meta = [h.source, h.published].filter(Boolean).join('，');
@@ -1018,8 +1034,111 @@ function toTW(t){
 function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
 
 // ---------- chat ----------
+let pendingImage = null;
+
+(function () {
+  const btn = $('#imgBtn'), file = $('#imgFile'), prev = $('#imgPrev'), thumb = $('#imgPrevThumb'), x = $('#imgPrevX');
+  if (!btn) return;
+  btn.onclick = () => file.click();
+  file.onchange = () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1024;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        pendingImage = cv.toDataURL('image/jpeg', 0.85);
+        thumb.src = pendingImage; prev.style.display = 'block';
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+    file.value = '';
+  };
+  x.onclick = () => { pendingImage = null; prev.style.display = 'none'; };
+})();
+
+async function sendImage(q) {
+  busy = true;
+  sendBtn.disabled = true; stopBtn.style.display = 'inline-block';
+  input.value = ''; input.style.height = 'auto';
+  $('#imgPrev').style.display = 'none';
+  const img = pendingImage; pendingImage = null;
+
+  const u = document.createElement('div');
+  u.className = 'msg user';
+  u.innerHTML = '<div class="pic">你</div><div class="body"><div class="bubble"></div></div>';
+  u.querySelector('.bubble').innerHTML = '<img class="thumb" src="' + img + '" alt=""><div class="cap"></div>';
+  u.querySelector('.cap').textContent = q || '（看看这张图）';
+  stream.appendChild(u); emptyEl.style.display = 'none';
+  u.scrollIntoView({ block: 'end', behavior: 'smooth' });
+
+  const bubble = addMsg('ai', '');
+  bubble.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+  abortCtl = new AbortController();
+  let acc = '';
+  const t0 = performance.now();
+  try {
+    const r = await fetch(VL_URL + '/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: abortCtl.signal,
+      body: JSON.stringify({
+        model: 'vl',
+        stream: true,
+        max_tokens: 260,
+        temperature: 0.8,
+        messages: [{ role: 'user', content: [
+          { type: 'text', text: (q || '描述这张图片') + '\n（请用生动简短的中文回答）' },
+          { type: 'image_url', image_url: { url: img } }
+        ] }]
+      })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const payload = t.slice(5).trim();
+        if (payload === '[DONE]') continue;
+        try {
+          const j = JSON.parse(payload);
+          const d = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+          if (d) { acc += d; bubble.innerHTML = md(fmtOut(acc)); }
+        } catch (e) {}
+      }
+    }
+    if (!acc) acc = '（图像太小或看不清，换个清楚的图试试？）';
+    bubble.innerHTML = md(fmtOut(acc));
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = '🖼 识图 · ' + Math.round((performance.now() - t0) / 1000) + ' 秒 · 本机';
+    bubble.closest('.body').appendChild(meta);
+  } catch (e) {
+    bubble.innerHTML = md('识图服务没启动或者出错了～\n\n双击 **识图.cmd** 把识图服务打开，再发一次就好。\n（' + (e.message || e) + '）');
+  } finally {
+    busy = false; abortCtl = null;
+    stopBtn.style.display = 'none'; sendBtn.disabled = !ready;
+    input.focus();
+  }
+}
+
 async function send(text){
   if (busy || !text.trim()) return;
+  if (pendingImage) { await sendImage(text.trim()); return; }
   if (!ready){ if (!(await checkHealth())) { toast('服务还没起来，稍等一下～'); return; } ready = true; }
   busy = true;
   sendBtn.disabled = true; stopBtn.style.display = 'inline-block';
