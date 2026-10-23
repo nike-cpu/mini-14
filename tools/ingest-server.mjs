@@ -226,6 +226,14 @@ async function searchBing(q) {
 }
 
 const server = http.createServer((req, res) => {
+  // only the local chat UI may call state-changing endpoints (CSRF guard)
+  const __origin = req.headers.origin || '';
+  const __allowed = /^https?:\/\/(127\.0\.0\.1|localhost):18014$/.test(__origin);
+  if (req.method === 'POST' && __origin && !__allowed) {
+    res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify({ ok: false, error: 'forbidden origin' }));
+  }
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
@@ -280,7 +288,8 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const raw = Buffer.concat(parts).toString('utf8');
-        const body = JSON.parse(raw);
+        let body;
+        try { body = JSON.parse(raw); } catch { return json(res, 400, { ok: false, error: 'bad json' }); }
         if (!body.text || !body.name) return json(res, 400, { ok: false, error: 'name/text 不能为空' });
         let text = body.text;
         if (/\.(html?|htm)$/i.test(body.name)) text = stripHtml(text);
