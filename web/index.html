@@ -195,6 +195,10 @@ main{flex:1;overflow:auto;padding:26px 0 8px;scroll-behavior:smooth}
 /* composer */
 .imgbtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:17px;line-height:1}
 .imgbtn:hover{border-color:var(--red)}
+.filechip{display:none;align-items:center;gap:8px;margin:0 0 8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12.5px;width:fit-content;max-width:100%}
+.filechip button{border:0;background:#f4ece7;border-radius:7px;padding:3px 8px;font-size:11.5px;cursor:pointer;color:var(--text)}
+.filechip button:hover{background:var(--red);color:#fff}
+.filechip .x{cursor:pointer;color:var(--muted)}
 .imgprev{display:none;margin:0 0 8px;position:relative;width:fit-content}
 .imgprev img{max-height:96px;border-radius:10px;border:1px solid var(--line);display:block}
 .imgprev .x{position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -335,10 +339,13 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
     <footer>
       <div class="composer">
         <textarea id="input" rows="1" placeholder="和 mini-14 说点什么…"></textarea>
+        <div class="filechip" id="fileChip"><span id="fileChipText"></span><button id="fileImport" title="存进资料库">入库</button><span class="x" id="fileChipX">✕</span></div>
         <div class="imgprev" id="imgPrev"><img id="imgPrevThumb" alt=""><span class="x" id="imgPrevX">✕</span></div>
         <div class="crow">
           <span class="hint">Enter 发送 · Shift + Enter 换行</span>
           <button class="imgbtn" id="imgBtn" title="识图：选一张图片">📷</button>
+          <button class="imgbtn" id="fileBtn" title="上传文件（txt / md / csv / json / html / docx / pdf）">📎</button>
+          <input type="file" id="fileUp" accept=".txt,.md,.csv,.json,.html,.htm,.log,.docx,.pdf,.xml,.yml,.yaml" style="display:none" />
           <input type="file" id="imgFile" accept="image/*" style="display:none" />
           <div class="grow"></div>
           <button class="stop" id="stopBtn">停止</button>
@@ -386,6 +393,7 @@ const emptyEl = $('#empty'), dot = $('#dot'), statusText = $('#statusText');
 const PERSONA = '你是 mini-14，一个红头发、戴白色女仆头饰的小女仆，住在小用户的电脑里，称呼用户为「小用户」。说话温柔、活泼、简短、有画面感，偶尔自称"小十四"，喜欢用"～"结尾。默认用中文回答。不知道就说不知道，不要编造。';
 const EMBED_URL = 'http://127.0.0.1:18016/v1/embeddings';
 const VL_URL = 'http://127.0.0.1:18020';
+const INGEST_URL = 'http://127.0.0.1:18018';
 const TOPIC_NAME = { esports: '电竞', anime: '动漫', 'adult-games': '成人游戏', 'steam-games': 'Steam', 'film-tv': '影视', food: '美食', 'delta-force': '三角洲', 'politics-cn': '中国政治', 'history-cn': '中国近现代史', 'world-politics': '世界政治', 'political-theory': '政治理论', taiwan: '岛内政治', custom: '自定义', literature: '文学', 'game-wiki': '游戏百科', 'game-news': '游戏资讯', web: '网页存档', general: '综合', quotes: '语录', chat: '日常对话', 'web-search': '网络', entertainment: '娱乐' };
 
 let history = [];
@@ -1035,6 +1043,47 @@ function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
 
 // ---------- chat ----------
 let pendingImage = null;
+let pendingFile = null;
+
+(function () {
+  const btn = $('#fileBtn'), up = $('#fileUp'), chip = $('#fileChip'), txt = $('#fileChipText'), x = $('#fileChipX'), imp = $('#fileImport');
+  if (!btn) return;
+  btn.onclick = () => up.click();
+  up.onchange = async () => {
+    const f = up.files && up.files[0];
+    if (!f) return;
+    up.value = '';
+    if (f.size > 30 * 1024 * 1024) { toast('文件太大了（上限 30 MB）'); return; }
+    chip.style.display = 'flex';
+    txt.textContent = '📎 ' + f.name + ' · 解析中…';
+    try {
+      const r = await fetch(INGEST_URL + '/extract?name=' + encodeURIComponent(f.name), {
+        method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || '解析失败');
+      pendingFile = { name: j.name, text: j.text, chars: j.chars, ext: j.ext };
+      txt.textContent = '📎 ' + j.name + ' · ' + j.chars + ' 字';
+      toast('文件已解析：' + j.chars + ' 字，发送时我会基于它回答');
+    } catch (e) {
+      pendingFile = null;
+      chip.style.display = 'none';
+      toast('解析失败：' + (e.message || e));
+    }
+  };
+  x.onclick = () => { pendingFile = null; chip.style.display = 'none'; };
+  imp.onclick = async () => {
+    if (!pendingFile) return;
+    try {
+      const r = await fetch(INGEST_URL + '/add', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: pendingFile.name, text: pendingFile.text, url: 'upload://' + encodeURIComponent(pendingFile.name), source: '用户上传', topic: 'custom' })
+      });
+      const j = await r.json();
+      toast(j.ok ? '已存进资料库（' + (j.chunks || '?') + ' 段）' : '入库失败：' + (j.error || ''));
+    } catch (e) { toast('入库失败：' + (e.message || e)); }
+  };
+})();
 
 (function () {
   const btn = $('#imgBtn'), file = $('#imgFile'), prev = $('#imgPrev'), thumb = $('#imgPrevThumb'), x = $('#imgPrevX');
@@ -1144,8 +1193,11 @@ async function send(text){
   sendBtn.disabled = true; stopBtn.style.display = 'inline-block';
   const q = text.trim();
   input.value = ''; input.style.height = 'auto';
-  addMsg('user', q);
+  const userBubble = addMsg('user', q);
   history.push({role:'user', content:q});
+  if (pendingFile && userBubble) {
+    userBubble.innerHTML = '<span style="opacity:.7;font-size:12px">📎 ' + esc(pendingFile.name) + ' · ' + pendingFile.chars + ' 字</span><br>' + userBubble.innerHTML;
+  }
 
   const bubble = addMsg('ai', '');
   bubble.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
@@ -1153,6 +1205,7 @@ async function send(text){
   let acc = '';
   const t0 = performance.now();
   let hits = [];
+  let attachedFile = null;
 
   // 子供向：成人向提问直接温和拒绝，不进检索也不调模型
   if (mode === 'kids' && /成人向|18禁|R18|R-18|18\+|galgame|eroge|エロ|黄油|工口|里番|色情|涩涩|裸|性行为|黄游/i.test(q)){
@@ -1204,6 +1257,16 @@ async function send(text){
         window.__lastWebMs = Math.round(performance.now() - t2);
         if (webHits.length) hits = hits.concat(webHits);
       } catch (e) { toast('联网搜索失败，这次只用本地资料'); }
+    }
+    if (pendingFile) {
+      const body = pendingFile.text.slice(0, 4000);
+      const head = '【用户上传的文件《' + pendingFile.name + '》，共 ' + pendingFile.chars + ' 字' +
+        (pendingFile.chars > 4000 ? '，以下为前 4000 字' : '') + '】\n';
+      const last = history[history.length - 1];
+      if (last && last.role === 'user') last.content = head + body + '\n\n【问题】' + q;
+      const chip = $('#fileChip');
+      if (chip) chip.style.display = 'none';
+      pendingFile = null;
     }
     const res = await fetch('/v1/chat/completions', {
       method:'POST',
