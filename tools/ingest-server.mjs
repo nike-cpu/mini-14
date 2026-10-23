@@ -3,6 +3,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import { spawn } from 'node:child_process';
 
 const ROOT = 'D:\\mini-14';
@@ -237,6 +238,37 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && req.url.startsWith('/health')) {
     return json(res, 200, { status: 'ok' });
   }
+  if (req.method === 'POST' && req.url.startsWith('/extract')) {
+    const u = new URL(req.url, 'http://127.0.0.1');
+    const name = (u.searchParams.get('name') || 'upload.txt').replace(/[\\/:*?"<>|]/g, '_');
+    const ext = (name.match(/\.[a-z0-9]+$/i) || ['.txt'])[0].toLowerCase();
+    if (!['.txt', '.md', '.csv', '.json', '.html', '.htm', '.log', '.docx', '.pdf', '.xml', '.yml', '.yaml'].includes(ext)) {
+      return json(res, 400, { ok: false, error: '不支持的文件类型：' + ext });
+    }
+    const tmp = path.join(os.tmpdir(), 'm14-upload-' + Date.now() + '-' + name);
+    const chunks = [];
+    req.on('data', b => { chunks.push(b); if (Buffer.concat(chunks).length > 30e6) req.destroy(); });
+    req.on('end', () => {
+      try { fs.writeFileSync(tmp, Buffer.concat(chunks)); } catch (e) { return json(res, 500, { ok: false, error: String(e.message || e) }); }
+      const py = path.join(ROOT, 'runtime', 'py', 'Scripts', 'python.exe');
+      const child = spawn(py, [path.join(ROOT, 'tools', 'extract_text.py'), tmp], { windowsHide: true });
+      let out = '', err = '';
+      child.stdout.on('data', d => { out += d; });
+      child.stderr.on('data', d => { err += d; });
+      child.on('exit', () => {
+        try { fs.unlinkSync(tmp); } catch {}
+        try {
+          const j = JSON.parse(out);
+          if (j.ok) { j.name = name; j.ext = ext; return json(res, 200, j); }
+          json(res, 400, { ok: false, error: j.error || '提取失败', detail: err.slice(0, 200) });
+        } catch (e) {
+          json(res, 500, { ok: false, error: '解析失败', detail: (err || out).slice(0, 200) });
+        }
+      });
+    });
+    return;
+  }
+
   if (req.method === 'POST' && req.url.startsWith('/add')) {
     const parts = [];
     let size = 0;
