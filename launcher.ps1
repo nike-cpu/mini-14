@@ -122,6 +122,14 @@ function Start-Train {
         Start-Process -FilePath "$env:WINDIR\System32\wscript.exe" -ArgumentList "`"$vbs`"" -WindowStyle Hidden
     }
 }
+function Start-Vision {
+    $model = Join-Path $root 'models\vl\Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf'
+    $mm    = Join-Path $root 'models\vl\mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf'
+    if (-not (Test-Path $model) -or -not (Test-Path $mm)) { return }
+    if (Test-Port 18020) { return }
+    $vbs = Join-Path $root 'tools\run-vision.vbs'
+    if (Test-Path $vbs) { Start-Process -FilePath "$env:WINDIR\System32\wscript.exe" -ArgumentList "`"$vbs`"" -WindowStyle Hidden }
+}
 function Start-Ingest {
     $nodeExe = Join-Path $root 'runtime\node\node.exe'
     $script  = Join-Path $root 'tools\ingest-server.mjs'
@@ -143,6 +151,7 @@ if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Force $logDir | Ou
 Start-Embedding
 Start-Ingest
 Start-Train
+Start-Vision
 Start-Sleep -Seconds 2
 if (-not (Test-Port $ingPort)) { Start-Ingest; Start-Sleep -Seconds 2 }
 
