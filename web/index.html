@@ -193,8 +193,15 @@ main{flex:1;overflow:auto;padding:26px 0 8px;scroll-behavior:smooth}
 @keyframes bl{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
 /* composer */
-.imgbtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:17px;line-height:1}
-.imgbtn:hover{border-color:var(--red)}
+.tool{display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:11px;
+  border:1.5px solid #f2cec2;background:#fff3ee;color:var(--red);cursor:pointer;
+  font-size:13.5px;font-weight:700;letter-spacing:.3px;transition:.15s}
+.tool .ti{font-size:17px;line-height:1}
+.tool:hover{background:var(--red);border-color:var(--red);color:#fff;transform:translateY(-1px);box-shadow:0 6px 14px rgba(209,84,74,.28)}
+.tool:active{transform:none}
+.copybtn{margin-left:8px;border:1px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:7px;font-size:11px;padding:2px 7px;cursor:pointer}
+.copybtn:hover{color:var(--red);border-color:var(--red)}
 .filechip{display:none;align-items:center;gap:8px;margin:0 0 8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12.5px;width:fit-content;max-width:100%}
 .filechip button{border:0;background:#f4ece7;border-radius:7px;padding:3px 8px;font-size:11.5px;cursor:pointer;color:var(--text)}
 .filechip button:hover{background:var(--red);color:#fff}
@@ -311,6 +318,7 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
     <div class="topbar">
       <div class="status"><span class="dot" id="dot"></span><span id="statusText">正在唤醒小十四…</span></div>
       <div class="grow"></div>
+      <button class="tbtn" id="exportBtn" title="导出对话为 Markdown">导出</button>
       <button class="tbtn" id="clearBtn" title="清空对话">清空</button>
       <button class="tbtn" id="gearBtn" title="设置">设置</button>
     </div>
@@ -343,8 +351,8 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
         <div class="imgprev" id="imgPrev"><img id="imgPrevThumb" alt=""><span class="x" id="imgPrevX">✕</span></div>
         <div class="crow">
           <span class="hint">Enter 发送 · Shift + Enter 换行</span>
-          <button class="imgbtn" id="imgBtn" title="识图：选一张图片">📷</button>
-          <button class="imgbtn" id="fileBtn" title="上传文件（txt / md / csv / json / html / docx / pdf）">📎</button>
+          <button class="tool" id="imgBtn" title="识图：选一张图片"><span class="ti">📷</span>识图</button>
+          <button class="tool" id="fileBtn" title="上传文件（txt / md / csv / json / html / docx / pdf）"><span class="ti">📎</span>文件</button>
           <input type="file" id="fileUp" accept=".txt,.md,.csv,.json,.html,.htm,.log,.docx,.pdf,.xml,.yml,.yaml" style="display:none" />
           <input type="file" id="imgFile" accept="image/*" style="display:none" />
           <div class="grow"></div>
@@ -384,7 +392,6 @@ footer{padding:10px 22px 16px;flex:0 0 auto}
   
 </div>
 
-<script src="lang-tw.js?v=1"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const chat = $('#chat'), stream = $('#stream'), input = $('#input'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn');
@@ -473,6 +480,20 @@ const PHRASE_TW = {
   '浅色': '淺色'
 };
 
+let langLoading = null;
+function ensureLangTW(){
+  if (window.M14_TS) return Promise.resolve();
+  if (langLoading) return langLoading;
+  langLoading = new Promise((res) => {
+    const el = document.createElement('script');
+    el.src = 'lang-tw.js?v=2';
+    el.onload = () => res();
+    el.onerror = () => res();
+    document.head.appendChild(el);
+  });
+  return langLoading;
+}
+
 function applyLang(){
   // static pairs: remember the original simplified HTML the first time
   if (!window.__langOrig) {
@@ -513,7 +534,9 @@ function tr(txt){
 $('#langBtn') && ($('#langBtn').onclick = () => {
   lang = lang === 'zh-TW' ? 'zh-CN' : 'zh-TW';
   localStorage.setItem('mini14-lang', lang);
-  applyLang();
+  if (lang === 'zh-TW') ensureLangTW().then(() => applyLang());
+  else if (lang === "zh-TW") ensureLangTW();
+applyLang();
   toast(lang === 'zh-TW' ? '已切換為繁體中文' : '已切換為简体中文');
 });
 
@@ -979,6 +1002,35 @@ function addMsg(role, text){
   return wrap.querySelector('.bubble');
 }
 
+function addRetry(bubble, question){
+  try {
+    const body = bubble.closest('.body');
+    if (!body) return;
+    const b = document.createElement('button');
+    b.className = 'copybtn';
+    b.id = 'retryBtn';
+    b.textContent = '重试';
+    b.style.marginLeft = '6px';
+    b.onclick = () => { b.remove(); send(question); };
+    body.appendChild(b);
+  } catch (e) {}
+}
+
+function addCopyBtn(bubble){
+  try {
+    const body = bubble.closest('.body');
+    if (!body) return;
+    const b = document.createElement('button');
+    b.className = 'copybtn';
+    b.textContent = '复制';
+    b.onclick = async () => {
+      try { await navigator.clipboard.writeText(bubble.innerText); b.textContent = '已复制'; setTimeout(() => b.textContent = '复制', 1500); }
+      catch { b.textContent = '复制失败'; }
+    };
+    body.appendChild(b);
+  } catch (e) {}
+}
+
 function addSources(bubble, hits){
   if (!hits || !hits.length) return;
   const holder = bubble.closest('.body');
@@ -1040,6 +1092,26 @@ function toTW(t){
   return out;
 }
 function fmtOut(t){ return lang === 'zh-TW' ? toTW(t) : t; }
+
+// ---------- export / copy ----------
+(function () {
+  const btn = $('#exportBtn');
+  if (btn) btn.onclick = () => {
+    const lines = ['# mini-14 对话记录', '', '导出时间：' + new Date().toLocaleString(), ''];
+    document.querySelectorAll('#stream .msg').forEach((m) => {
+      const who = m.classList.contains('user') ? '小用户' : 'mini-14';
+      const b = m.querySelector('.bubble');
+      lines.push('**' + who + '**：', '', (b ? b.innerText : '').trim(), '');
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mini-14-chat-' + new Date().toISOString().slice(0, 10) + '.md';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('对话已导出');
+  };
+})();
 
 // ---------- chat ----------
 let pendingImage = null;
@@ -1175,7 +1247,7 @@ async function sendImage(q) {
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.textContent = '🖼 识图 · ' + Math.round((performance.now() - t0) / 1000) + ' 秒 · 本机';
-    bubble.closest('.body').appendChild(meta);
+    bubble.closest('.body').appendChild(meta); addCopyBtn(bubble);
   } catch (e) {
     bubble.innerHTML = md('识图服务没启动或者出错了～\n\n双击 **识图.cmd** 把识图服务打开，再发一次就好。\n（' + (e.message || e) + '）');
   } finally {
@@ -1224,7 +1296,7 @@ async function send(text){
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.textContent = '缓存回答 · 0 秒 · 本机';
-    bubble.closest('.body').appendChild(meta);
+    bubble.closest('.body').appendChild(meta); addCopyBtn(bubble);
     addSources(bubble, hit.hits);
     history.push({role:'assistant', content:hit.text});
     busy = false; abortCtl = null;
@@ -1234,7 +1306,7 @@ async function send(text){
   }
 
   try{
-    if ($('#kbBtn').classList.contains('on') && manifest){
+    if ($('#kbBtn').classList.contains('on') && manifest && !attachedFile){
       const t1 = performance.now();
       hits = await retrieve(q);
       window.__lastRetrieveMs = Math.round(performance.now() - t1);
@@ -1259,6 +1331,7 @@ async function send(text){
       } catch (e) { toast('联网搜索失败，这次只用本地资料'); }
     }
     if (pendingFile) {
+      attachedFile = pendingFile;
       const body = pendingFile.text.slice(0, 4000);
       const head = '【用户上传的文件《' + pendingFile.name + '》，共 ' + pendingFile.chars + ' 字' +
         (pendingFile.chars > 4000 ? '，以下为前 4000 字' : '') + '】\n';
@@ -1316,7 +1389,7 @@ async function send(text){
     const rt = window.__lastRetrieveMs ? `检索 ${window.__lastRetrieveMs}ms · ` : '';
     const wm = webHits.length ? ` · 🌐 网络 ${webHits.length} 条` : '';
     meta.innerHTML = `${rt}${acc.length} 字 · ${sec.toFixed(1)} 秒${wm} · 本机推理 <button class="copy">复制</button>`;
-    bubble.closest('.body').appendChild(meta);
+    bubble.closest('.body').appendChild(meta); addCopyBtn(bubble);
     meta.querySelector('.copy').onclick = () => {
       navigator.clipboard.writeText(acc).then(() => toast('已复制'));
     };
@@ -1330,6 +1403,7 @@ async function send(text){
       if (acc) history.push({role:'assistant', content:acc});
     } else {
       bubble.innerHTML = '<p>呜…出错了：' + esc(String(err.message)) + '</p><p>看看 <code>logs\\server.err.log</code>，或者重新打开 mini-14。</p>';
+    addRetry(bubble, q);
       dot.className = 'dot bad'; statusText.textContent = tr('连接断开');
     }
   }finally{
@@ -1340,6 +1414,10 @@ async function send(text){
 }
 
 stopBtn.onclick = () => { if (abortCtl) abortCtl.abort(); };
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && abortCtl) { abortCtl.abort(); toast('已停止'); }
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) { e.preventDefault(); send(input.value); }
+});
 sendBtn.onclick = () => send(input.value);
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); send(input.value); }
