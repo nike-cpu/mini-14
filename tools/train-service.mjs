@@ -53,6 +53,14 @@ function json(res, code, obj) {
 }
 
 const server = http.createServer((req, res) => {
+  // only the local chat UI may call state-changing endpoints (CSRF guard)
+  const __origin = req.headers.origin || '';
+  const __allowed = /^https?:\/\/(127\.0\.0\.1|localhost):18014$/.test(__origin);
+  if (req.method === 'POST' && __origin && !__allowed) {
+    res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify({ ok: false, error: 'forbidden origin' }));
+  }
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
